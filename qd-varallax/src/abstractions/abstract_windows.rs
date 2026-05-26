@@ -164,10 +164,9 @@ impl VxWindowStats {
 		}
 	}
 	pub fn update_event(&mut self, res: &mut VxAppResources) {
-		self.scene.register_texture_event(&res.gpu, &mut res.textures);
+		let mut painter = VxPainter::new();
+		self.scene.paint_event(res, &mut painter);
 		res.textures.update_bind_group(&res.gpu);
-		let mut painter = VxPainter::new(&res.fonts);
-		self.scene.paint_event(&mut painter);
 
 		let verts = std::mem::take(&mut painter.vertices);
 		let sdf_verts = std::mem::take(&mut painter.sdf_verts);

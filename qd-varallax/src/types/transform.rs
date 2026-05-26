@@ -239,7 +239,7 @@ impl VxMatrix3x3 {
 			]
 		}
 	}
-	pub fn from_transform(transform: &VxTransform) -> Self {
+	pub fn from_transform(transform: VxTransform) -> Self {
 		let (sin, cos) = transform.rotation().to_radians().sin_cos();
 		let x = transform.pos().x();
 		let y = transform.pos().y();

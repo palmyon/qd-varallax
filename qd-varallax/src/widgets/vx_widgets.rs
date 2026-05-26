@@ -69,7 +69,7 @@ impl VxRectWidget {
 	}
 	pub fn set_rect(&mut self, rect: VxRect) {
 		self.rect = rect;
-		let mut t = *self.transform();
+		let mut t = self.transform();
 		t.set_size(rect.size());
 		self.set_transform(t);
 	}

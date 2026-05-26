@@ -4,7 +4,9 @@ use crate::{
 		VxWidget, VxWidgetHandler, VxWidgetId
 	}},
 	core::{
-		bvh::VxSpatialIndex, gpu_resource::VxGpuResource, systems::VxTextureSystem, vx_event::{
+		bvh::VxSpatialIndex,
+		resource::VxAppResources,
+		vx_event::{
 			VxEventResult,
 			VxKeyEvent,
 			VxMouseEvent
@@ -41,11 +43,13 @@ impl VxScene {
 	}
 
 	// private methods
-	fn paint_widget(&mut self, id: VxWidgetId, painter: &mut VxPainter) {
+	fn paint_widget(&mut self, res: &mut VxAppResources, id: VxWidgetId, painter: &mut VxPainter) {
 		let Some(widget) = self.widgets.get_mut(id.id()) else { return; };
 		if !widget.is_visible() {
 			return;
 		}
+
+		widget.register_texture_event(&res.gpu, &mut res.textures);
 
 		widget.paint(painter);
 		painter.set_vertex_z_value(widget.z_value());
@@ -59,14 +63,14 @@ impl VxScene {
 			let Some(c) = self.widgets.get_mut(child.id()) else { continue; };
 			c.set_z_value(z + 1);
 			painter.push_tranform(
-				&VxTransform::new(
+				VxTransform::new(
 					Self::apply_alignment_to_rect(pos, c.bounding_rect(), c.stats().alignment(), bounding_rect),
 					VxSize::default(),
 					VxSize::new(1.0, 1.0),
 					0.0.into(),
 					VxVec2::default()
 			));
-			self.paint_widget(child, painter);
+			self.paint_widget(res, child, painter);
 			painter.pop_transform();
 		}
 	}
@@ -104,31 +108,22 @@ impl VxScene {
 		}
 	}
 
-	fn send_register_texture(&mut self, id: VxWidgetId, gpu: &VxGpuResource, system: &mut VxTextureSystem) {
-		let Some(widget) = self.widgets.get_mut(id.id()) else { return; };
-		if !widget.is_visible() {
-			return;
-		}
-
-		widget.register_texture_event(gpu, system);
-		
-	}
-
 	// 指定場所にウィジェットがあるか特定
 	fn find_widget_at(&mut self, pos: VxVec2) -> Option<VxWidgetId> {
-		let mut result = self.spatial_index.hit_test(&pos);
+		let result = self.spatial_index.hit_test(pos);
 		if result.is_empty() { return None; }
 
-		result.sort_by_key(|id| {
-			if let Some(w) = self.widgets.get(id.id()) {
-				w.z_value()
-			} else { 0 }
-		});
-		result.into_iter().rev().find(|id| {
-			if let Some(w) = self.widgets.get(id.id()) {
-				w.is_visible() && w.bounding_rect().contains(&pos)
-			} else { false }
-		})
+		result.into_iter()
+			.filter_map(|id| {
+				let widget = self.widgets.get(id.id())?;
+				if widget.is_visible() && widget.bounding_rect().contains(pos) {
+					Some((widget.z_value(), id))
+				} else {
+					None
+				}
+			})
+			.max_by_key(|(z, _)| *z)
+			.map(|(_, id)| id)
 	}
 
 	pub(crate) fn check_dirty(&mut self) -> bool {
@@ -211,14 +206,9 @@ impl VxScene {
 		VxEventResult::Ignore
 	}
 	// Events
-	pub fn paint_event(&mut self, painter: &mut VxPainter) {
+	pub fn paint_event(&mut self, res: &mut VxAppResources, painter: &mut VxPainter) {
 		for id in self.top_level_widgets.clone() {
-			self.paint_widget(id, painter);
-		}
-	}
-	pub fn register_texture_event(&mut self, gpu: &VxGpuResource, system: &mut VxTextureSystem) {
-		for id in self.top_level_widgets.clone() {
-			self.send_register_texture(id, gpu, system);
+			self.paint_widget(res, id, painter);
 		}
 	}
 	// MouseEvents

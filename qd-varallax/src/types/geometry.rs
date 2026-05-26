@@ -551,7 +551,7 @@ impl VxRect {
 		self.translate(vector);
 		self
 	}
-	pub fn set_transform(&mut self, transform: &VxTransform) {
+	pub fn set_transform(&mut self, transform: VxTransform) {
 		let scale = self.size() * transform.scale();
 		let (sw, sh) = scale.to_tuple();
 
@@ -595,7 +595,7 @@ impl VxRect {
 			transform.pos().y() + min_y
 		));
 	}
-	pub fn with_transform(self, transform: &VxTransform) -> Self {
+	pub fn with_transform(self, transform: VxTransform) -> Self {
 		let mut rect = Self::from_pos_size(self.pos(), self.size());
 		rect.set_transform(transform);
 		rect
@@ -603,7 +603,7 @@ impl VxRect {
 
 	//regions
 	#[inline]
-	pub fn intersect(self, other: &Self) -> Option<Self> {
+	pub fn intersect(self, other: Self) -> Option<Self> {
 		let x1 = self.left().max(other.left());
 		let y1 = self.top().max(other.top());
 		let x2 = self.right().min(other.right());
@@ -616,7 +616,7 @@ impl VxRect {
 		}
 	}
 	#[inline]
-	pub fn intersects(self, other: &Self) -> bool {
+	pub fn intersects(self, other: Self) -> bool {
 		self.left() < other.right() &&
 		self.right() > other.left() &&
 		self.top() < other.bottom() &&
@@ -632,14 +632,14 @@ impl VxRect {
 		Self::new(x1, y1, x2 - x1, y2 - y1)
 	}
 	#[inline]
-	pub fn contains(&self, point: &VxVec2) -> bool {
+	pub fn contains(&self, point: VxVec2) -> bool {
 		point.x() >= self.left() &&
 		point.x() < self.right() &&
 		point.y() >= self.top() &&
 		point.y() < self.bottom()
 	}
 	#[inline]
-	pub fn encloses(&self, other: &Self) -> bool {
+	pub fn encloses(&self, other: Self) -> bool {
 		self.left() <= other.left() &&
 		self.right() >= other.right() &&
 		self.top() <= other.top() &&

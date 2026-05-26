@@ -83,7 +83,7 @@ impl VxMaxRectsPacker {
 	fn split_free_rect(&mut self, index: usize, used: VxRect) -> bool {
 		let free = self.free_rects[index];
 
-		if !free.intersects(&used) {
+		if !free.intersects(used) {
 			return false;
 		}
 
@@ -122,9 +122,9 @@ impl VxMaxRectsPacker {
 		while i < self.free_rects.len() {
 			let mut j = i + 1;
 			while j < self.free_rects.len() {
-				if self.free_rects[i].encloses(&self.free_rects[j]) {
+				if self.free_rects[i].encloses(self.free_rects[j]) {
 					self.free_rects.remove(j);
-				} else if self.free_rects[j].encloses(&self.free_rects[i]) {
+				} else if self.free_rects[j].encloses(self.free_rects[i]) {
 					self.free_rects.remove(i);
 					i -= 1;
 					break;

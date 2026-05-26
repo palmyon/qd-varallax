@@ -95,7 +95,7 @@ impl VxWidgetStats {
 	#[inline]
 	pub fn center_pivot(&self) -> VxVec2 { self.transform().pivot() }
 	#[inline]
-	pub fn transform(&self) -> &VxTransform { &self.transform }
+	pub fn transform(&self) -> VxTransform { self.transform }
 	#[inline]
 	pub fn is_visible(&self) -> bool { self.visible }
 	#[inline]
@@ -192,7 +192,7 @@ pub trait VxWidget: VxWidgetInternal {
 	#[inline]
 	fn scale(&self) -> VxSize { self.stats().scale() }
 	#[inline]
-	fn transform(&self) -> &VxTransform { &self.stats().transform() }
+	fn transform(&self) -> VxTransform { self.stats().transform() }
 	#[inline]
 	fn is_visible(&self) -> bool { self.stats().is_visible() }
 	#[inline]

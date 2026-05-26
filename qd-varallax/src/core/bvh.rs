@@ -35,7 +35,7 @@ impl VxSpatialIndex {
 		self.tree.optimize_incremental(&mut self.workspace);
 	}
 
-	pub fn hit_test(&self, point: &VxVec2) -> Vec<VxWidgetId> {
+	pub fn hit_test(&self, point: VxVec2) -> Vec<VxWidgetId> {
 		let pos = Vec2::new(point.x(), point.y());
 		let aabb = Aabb::new(pos, pos);
 		self.tree.intersect_aabb(&aabb)

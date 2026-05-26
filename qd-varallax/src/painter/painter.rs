@@ -1,7 +1,6 @@
 use crate::{
 	core::{
 		glyph::VxFont,
-		systems::VxFontSystem
 	},
 	painter::tessellate::{
 		self
@@ -83,24 +82,22 @@ impl<T> VxVertexContainer<T> {
 	}
 }
 
-pub struct VxPainter<'a> {
+pub struct VxPainter {
 	transform_stack: Vec<VxMatrix3x3>,
 	pub(crate) vertices: Vec<VxVertexContainer<VxVertex>>,
 	pub(crate) sdf_verts: Vec<VxVertexContainer<VxSdfVertex>>,
 	pub(crate) tex_verts: Vec<VxVertexContainer<VxTexVertex>>,
 	pub(crate) text_data: Vec<VxDrawTextData>,
-	pub font_system: &'a VxFontSystem,
 }
 
-impl<'a> VxPainter<'a> {
-	pub fn new(font_system: &'a VxFontSystem) -> Self {
+impl VxPainter {
+	pub fn new() -> Self {
 		Self {
 			transform_stack: vec![VxMatrix3x3::identity()],
 			vertices: vec![],
 			sdf_verts: vec![],
 			tex_verts: vec![],
 			text_data: vec![],
-			font_system
 		}
 	}
 
@@ -109,7 +106,7 @@ impl<'a> VxPainter<'a> {
 		.expect("VxPainter> transform_stack: Not found last VxMatrix3x3. Check [VxWidget> paint] event.")
 	}
 
-	pub fn push_tranform(&mut self, transform: &VxTransform) {
+	pub fn push_tranform(&mut self, transform: VxTransform) {
 		let new_matrix = *self.current_tranform() * VxMatrix3x3::from_transform(transform);
 		self.transform_stack.push(new_matrix);
 	}

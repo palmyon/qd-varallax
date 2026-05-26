@@ -36,7 +36,7 @@ impl VxWidget for VxTextWidget {
 	fn paint(&mut self, painter: &mut crate::painter::painter::VxPainter) {
 		if self.change_bounding_rect {
 			self.change_bounding_rect = false;
-			self.bounding_rect = painter.font_system.create_text_bounding_rect(&self.text, &self.font);
+			// self.bounding_rect = painter.font_system.create_text_bounding_rect(&self.text, &self.font);
 		}
 		painter.push_tranform(self.transform());
 		painter.draw_text(self.text.clone(), self.font.clone(), self.color);
