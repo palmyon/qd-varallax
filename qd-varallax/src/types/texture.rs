@@ -23,6 +23,7 @@ impl Default for VxImage {
 }
 
 impl VxImage {
+	#[inline]
 	pub fn new(size: VxSize, color: VxColorU8) -> Self {
 		let len = (size.width() * size.height()) as usize;
 		let pixels = vec![color; len];
@@ -211,6 +212,11 @@ impl Default for VxTexture {
 			img: None,
 			channel_map: None,
 		}
+	}
+}
+impl std::fmt::Display for VxTexture {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "VxTexture> ID: {:?}, Registered: {}", self.id, self.id.is_some())
 	}
 }
 

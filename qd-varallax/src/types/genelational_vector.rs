@@ -140,29 +140,35 @@ impl <T> VxGenVector<T> {
 		}
 	}
 
-	//controll
+	//control
 	pub fn insert(&mut self, data: T) -> VxGenIndex {
+		self.insert_with_key(|_| data)
+	}
+
+	pub fn insert_with_key<F: FnOnce(VxGenIndex) -> T>(&mut self, f: F) -> VxGenIndex {
 		if let Some(index) = self.free_head {
 			match &mut self.slots[index] {
 				VxSlot::Free { next_free, generation } => {
 					let g = *generation;
+					let id = VxGenIndex::new(index, g);
+
+					let data = f(id);
+
 					self.free_head = *next_free;
-					
 					self.slots[index] = VxSlot::Using { data, generation: g };
 					self.len += 1;
-					VxGenIndex::new(index, g)
+					id
 				}
-				_ => unreachable!("free_head pointed to a Using slot")
+				_ => unreachable!("free_head pointed to a Using slot."),
 			}
 		} else {
 			let index = self.slots.len();
 			let generation = 0;
-			self.slots.push(VxSlot::Using {
-				data,
-				generation, 
-			});
+			let id = VxGenIndex::new(index, generation);
+			let data = f(id);
+			self.slots.push(VxSlot::Using { data, generation });
 			self.len += 1;
-			VxGenIndex::new(index, generation)
+			id
 		}
 	}
 
@@ -258,6 +264,19 @@ impl <T> VxGenVector<T> {
 		})
 	}
 
+	pub fn last_id(&self) -> Option<VxGenIndex> {
+		self.slots.iter()
+			.enumerate()
+			.rev()
+			.find_map(|(index, slot)| {
+				if let VxSlot::Using { generation, .. } = slot {
+					Some(VxGenIndex::new(index, *generation))
+				} else {
+					None
+				}
+			})
+	}
+
 	#[inline]
 	pub fn is_empty(&self) -> bool {
 		self.len == 0
@@ -299,11 +318,4 @@ impl <T> VxGenVector<T> {
 		self.free_head = None;
 		self.len = 0;
 	}
-}
-
-#[macro_export]
-macro_rules! vx_gen_vector {
-	() => {
-		VxGenVector::new()
-	};
 }

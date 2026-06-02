@@ -1,4 +1,11 @@
-use crate::core::{gpu_resource::VxGpuResource, systems::{VxFontSystem, VxTextureSystem}};
+use crate::core::{
+	glyph::VxFont,
+	gpu_resource::VxGpuResource,
+	systems::{
+		VxFontSystem,
+		VxTextureSystem
+	}
+};
 
 
 
@@ -13,8 +20,9 @@ impl VxAppResources {
 		let gpu = pollster::block_on(VxGpuResource::new());
 		let textures = VxTextureSystem::new(&gpu);
 		let mut fonts = VxFontSystem::new(&gpu);
-		fonts.storage.register_font("kokumr", include_bytes!("../../../qd-varallax/src/assets/kokumr.TTF"));
-		fonts.set_init_glyphs(&gpu, "kokumr", 32.0, include_str!("../../../qd-varallax/src/assets/pre_load.txt"));
+
+		fonts.register_font("kokumr", include_bytes!("../../../qd-varallax/src/assets/kokumr.TTF"));
+
 		Self {
 			gpu,
 			fonts,

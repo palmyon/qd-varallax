@@ -184,7 +184,7 @@ impl VxWindow for VxMessageBox {
 		);
 		self.add_widget(bg);
 
-		let mut text = VxTextWidget::new(self.text.clone(), VxFont::new("kokumr", 20.0), 0x000000.into(), None);
+		let mut text = VxTextWidget::new(self.text.clone(), VxFont::new(0, 20.0), 0x000000.into(), None);
 		text.set_pos((0.0, 30.0).into());
 
 		self.add_widget(text);
@@ -194,7 +194,7 @@ impl VxWindow for VxMessageBox {
 				VxRect::from_i32(0, 0, 120, 50), 10.0
 			),
 			"Ok",
-			VxButtonStyle::new(VxThemeMode::LightMode, VxFont::new("kokumr", 20.0)),
+			VxButtonStyle::new(VxThemeMode::LightMode, VxFont::new(0, 20.0)),
 			None
 		);
 		button.set_pos(VxVec2::from_i32(120, 40));

@@ -3,7 +3,6 @@ use derive_more::{Add, AddAssign, Mul, MulAssign, Div, DivAssign, Sub, SubAssign
 use crate::types::transform::VxTransform;
 
 //vector2 -------------------------------------------------------------------------------
-#[repr(C)]
 #[derive(
 	Clone, Copy, PartialEq, PartialOrd, Debug, Default,
 	Add, Sub, Div,

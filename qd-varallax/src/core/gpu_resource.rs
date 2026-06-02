@@ -1,7 +1,5 @@
 
-use crate::types::{
-	genelational_vector::VxGenVector, geometry::VxSize
-	};
+use crate::types::geometry::VxSize;
 
 pub(crate) struct VxGpuTextureData {
 	pub view: wgpu::TextureView,
@@ -17,7 +15,6 @@ impl VxGpuTextureData {
 pub(crate) struct VxBindlessTextureModule {
 	pub(crate) bind_group: wgpu::BindGroup,
 	pub(crate) dummy_view: wgpu::TextureView,
-	pub(crate) entries: VxGenVector<VxGpuTextureData>,
 }
 
 impl VxBindlessTextureModule {
@@ -64,7 +61,6 @@ impl VxBindlessTextureModule {
 		Self {
 			bind_group,
 			dummy_view,
-			entries: VxGenVector::new(),
 		}
 	}
 
@@ -91,7 +87,7 @@ impl VxBindlessTextureModule {
 
 
 
-pub struct VxGpuResource {
+pub(crate) struct VxGpuResource {
 	pub(crate) instance: wgpu::Instance,
 	pub(crate) adapter: wgpu::Adapter,
 	pub(crate) device: wgpu::Device,

@@ -88,13 +88,15 @@ impl VxMsdfGenerator {
 
 	pub fn create_msdf_from_outline(outline: Outline) -> VxImage {
 		let bounding_rect = VxFontDataGenerator::create_bounding_rect(&outline);
+		let shape = VxFontDataGenerator::create_shape(&outline);
+		Self::create_msdf_from_shape(bounding_rect, shape)
+	}
+
+	pub fn create_msdf_from_shape(bounding_rect: VxRect, mut shape: fdsm::shape::Shape<fdsm::shape::Contour>) -> VxImage {
 		let padding = VxFontDataGenerator::create_padding(Self::RANGE);
 		let texture_size = VxFontDataGenerator::create_texture_size(bounding_rect, padding);
-		let mut shape = VxFontDataGenerator::create_shape(&outline);
 		VxFontDataGenerator::apply_transform_to_shape(&mut shape, texture_size, bounding_rect, Self::RANGE);
-		let msdf_texture = VxFontDataGenerator::create_msdf_from_shape(
-			shape, texture_size, Self::RANGE
-		);
+		let msdf_texture = VxFontDataGenerator::create_msdf_from_shape(shape, texture_size, Self::RANGE);
 		let msdf_size = VxSize::from_u32(msdf_texture.width(), msdf_texture.height());
 		VxImage::from_raw_rgb(msdf_texture.into_raw(), msdf_size)
 	}
@@ -117,9 +119,10 @@ impl VxFontDataGenerator {
 		scaler.scale_outline(id)
 	}
 	pub fn create_advance(font_ref: FontRef<'_>, id: u16, font_size: f32) -> f32 {
-		let bind = [id as i16];
-		let metrics = font_ref.glyph_metrics(&bind);
-		(metrics.advance_width(id) * font_size) / metrics.units_per_em() as f32
+		let advance_width = font_ref
+			.glyph_metrics(&[])
+			.advance_width(id);
+		(advance_width * font_size) / font_ref.metrics(&[]).units_per_em as f32
 	}
 	#[inline]
 	pub fn create_bounding_rect(outline: &Outline) -> VxRect {
@@ -234,10 +237,11 @@ impl VxFontDataGenerator {
 				let bounding_rect = Self::create_bounding_rect(&out);
 				if !bounding_rect.size().is_empty() {
 					let size = Self::create_texture_size(bounding_rect, padding);
-					return VxTextBoundingSizeResult::new(ch, size, advance, Some(out))
+					let shape = Self::create_shape(&out);
+					return VxTextBoundingSizeResult::new(ch, size, bounding_rect, advance, Some(shape));
 				}
 			}
-			VxTextBoundingSizeResult::new(ch, VxSize::default(), advance, None)
+			VxTextBoundingSizeResult::new(ch, VxSize::default(), VxRect::default(), advance, None)
 		}).collect()
 	}
 }
@@ -245,12 +249,19 @@ impl VxFontDataGenerator {
 pub(crate) struct VxTextBoundingSizeResult {
 	pub ch: char,
 	pub size: VxSize,
+	pub bounding_rect: VxRect,
 	pub advance: f32,
-	pub outline: Option<Outline>,
+	pub shape: Option<fdsm::shape::Shape<fdsm::shape::Contour>>,
 }
 
 impl VxTextBoundingSizeResult {
-	pub fn new(ch: char, size: VxSize, advance: f32, outline: Option<Outline>) -> Self {
-		Self { ch, size, advance, outline }
+	pub fn new(
+		ch: char,
+		size: VxSize,
+		bounding_rect: VxRect,
+		advance: f32,
+		shape: Option<fdsm::shape::Shape<fdsm::shape::Contour>>
+	) -> Self {
+		Self { ch, size, bounding_rect, advance, shape }
 	}
 }

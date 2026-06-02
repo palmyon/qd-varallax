@@ -183,7 +183,7 @@ impl VxButtonWidget {
 		style: VxButtonStyle,
 		parent: Option<VxWidgetId>
 	) -> Self {
-		let mut t = VxTextWidget::new(text, VxFont::new("kokumr", 20.0), VxColor::from_hex(0xFFFFFF), None);
+		let mut t = VxTextWidget::new(text, VxFont::new(0, 20.0), VxColor::from_hex(0xFFFFFF), None);
 		t.stats_mut().set_alignment(VxAlignment::LeftCenter);
 		let mut stats = VxWidgetStats::new(parent);
 		stats.add_child_widget(t);

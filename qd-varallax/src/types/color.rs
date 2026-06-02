@@ -86,7 +86,7 @@ pub enum VxColorChannelSwap {
 ///
 /// // Implmented `Default` trait as (0.0, 0.0, 0.0, 1.0).
 /// let black = VxColor::default();
-/// println!("color: {}", black); // "color: #000000FF"
+/// println!("color: {}", black); // "color: #000000ff"
 /// ```
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -527,7 +527,7 @@ impl VxColor {
 		*self = new_color;
 	}
 
-	/// ## VxColor> setters> with_lighen()
+	/// ## VxColor> setters> with_lighten()
 	/// Returns the new color lightened by the given amount.
 	pub fn with_lighten(mut self, amount: f32) -> Self {
 		self.lighten(amount);
@@ -551,10 +551,10 @@ impl VxColor {
 ///
 /// let red = VxColorU8::rgb(255, 0, 0);
 /// // Implmented `Display` trait to format as a hex string.
-/// println!("color: {}", red); // "color: #FF0000FF"
+/// println!("color: {}", red); // "color: #ff0000ff"
 ///
 /// let green = VxColorU8::rgba_f(0.0, 1.0, 0.0, 1.0);
-/// println!("color: {}", green); // "color: #00FF00FF"
+/// println!("color: {}", green); // "color: #00ff00ff"
 ///
 /// let transparent = VxColorU8::from_vxcolor(
 /// 	VxColor::from_name(
@@ -564,11 +564,11 @@ impl VxColor {
 /// println!("color: {}", transparent) // "color: #00000000"
 ///
 /// let blue: VxColorU8 = (0, 0, 255).into(); // Supports conversion from `tuple(u8, u8, u8)`
-/// println!("color: {}", blue); // "color: #0000FFFF"
+/// println!("color: {}", blue); // "color: #0000ffff"
 ///
 /// // Implmented `Default` trait as (0, 0, 0, 255).
 /// let black = VxColorU8::default();
-/// println!("color: {}", black); // "color: #000000FF"
+/// println!("color: {}", black); // "color: #000000ff"
 /// ```
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Ord, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]

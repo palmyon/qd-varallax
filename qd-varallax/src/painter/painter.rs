@@ -45,7 +45,7 @@ impl VxDrawTextData {
 	}
 }
 
-#[derive(Clone, Copy, Default, PartialEq)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub(crate) enum VxVertexZValue {
 	#[default]
 	Disable,
@@ -154,7 +154,7 @@ impl VxPainter {
 		self.tex_verts[tex_point..].iter_mut().for_each(|c| c.set_z_value(z));
 
 		let text_point = self.text_data.partition_point(|c| c.is_z_enable());
-		self.tex_verts[text_point..].iter_mut().for_each(|c| c.set_z_value(z));
+		self.text_data[text_point..].iter_mut().for_each(|c| c.set_z_value(z));
 	}
 
 	pub fn draw_rect(&mut self, rect: VxRect, brush: VxColor) {
