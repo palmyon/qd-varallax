@@ -64,12 +64,12 @@ impl VxWindow for MainWindow {
         self.add_widget(button);
 
         let mut text = VxTextWidget::new(
-            "あいうえおかきくけこ",
+            "aaaaaaabbbbbb",
             VxFont::from_family_str("kokumr", 32.0),
             VxColor::from_hex(0xFFFFFF),
             None,
         );
-        text.set_pos(VxVec2::from_i32(50, 120));
+        text.set_pos(VxVec2::from_i32(350, 120));
         self.add_widget(text);
     }
 
