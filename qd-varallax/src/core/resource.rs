@@ -1,5 +1,4 @@
 use crate::core::{
-	glyph::VxFont,
 	gpu_resource::VxGpuResource,
 	systems::{
 		VxFontSystem,
