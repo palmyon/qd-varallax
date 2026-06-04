@@ -16,18 +16,29 @@ use nalgebra::{
 	Matrix3
 };
 use swash::{
-	FontRef, proxy::MetricsProxy, scale::{
-		ScaleContext, Scaler, outline::Outline
-	}, zeno::{
+	FontRef,
+	proxy::MetricsProxy,
+	scale::{
+		ScaleContext,
+		Scaler,
+		outline::Outline
+	},
+	zeno::{
 		self,
 		PathData
 	}
 };
 
-use crate::{core::glyph::VxVerticalMetrics, types::{
-	geometry::{VxRect, VxSize},
-	texture::VxImage
-}};
+use crate::{
+	core::glyph::VxVerticalMetrics,
+	types::{
+		geometry::{
+			VxRect,
+			VxSize
+		},
+		texture::VxImage
+	}
+};
 
 pub struct VxMsdfGenResult {
 	pub ch: char,
@@ -92,7 +103,7 @@ impl VxMsdfGenerator {
 		Self::create_msdf_from_shape(bounding_rect, shape)
 	}
 
-	pub fn create_msdf_from_shape(bounding_rect: VxRect, mut shape: fdsm::shape::Shape<fdsm::shape::Contour>) -> VxImage {
+	pub fn create_msdf_from_shape(bounding_rect: VxRect, mut shape: Shape<Contour>) -> VxImage {
 		let padding = VxFontDataGenerator::create_padding(Self::RANGE);
 		let texture_size = VxFontDataGenerator::create_texture_size(bounding_rect, padding);
 		VxFontDataGenerator::apply_transform_to_shape(&mut shape, texture_size, bounding_rect, Self::RANGE);
@@ -251,7 +262,7 @@ pub(crate) struct VxTextBoundingSizeResult {
 	pub size: VxSize,
 	pub bounding_rect: VxRect,
 	pub advance: f32,
-	pub shape: Option<fdsm::shape::Shape<fdsm::shape::Contour>>,
+	pub shape: Option<Shape<Contour>>,
 }
 
 impl VxTextBoundingSizeResult {
@@ -260,7 +271,7 @@ impl VxTextBoundingSizeResult {
 		size: VxSize,
 		bounding_rect: VxRect,
 		advance: f32,
-		shape: Option<fdsm::shape::Shape<fdsm::shape::Contour>>
+		shape: Option<Shape<Contour>>
 	) -> Self {
 		Self { ch, size, bounding_rect, advance, shape }
 	}

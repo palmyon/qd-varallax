@@ -64,7 +64,7 @@ impl VxWindow for MainWindow {
         self.add_widget(button);
 
         let mut text = VxTextWidget::new(
-            "aaaaaaabbbbbb",
+            "あいうえおかきくけこ",
             VxFont::from_family_str("kokumr", 32.0),
             VxColor::from_hex(0xFFFFFF),
             None,

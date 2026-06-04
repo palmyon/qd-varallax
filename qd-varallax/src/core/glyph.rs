@@ -6,8 +6,7 @@ use crate::types::{
     texture::VxImage,
 };
 
-pub(crate) const FALLBACK_FONT: &[u8] =
-    include_bytes!("../../../qd-varallax/src/assets/NotoSans-Regular.ttf");
+pub(crate) const FALLBACK_FONT: &[u8] = include_bytes!("../../../qd-varallax/src/assets/NotoSans-Regular.ttf");
 pub(crate) const FALLBACK_FONT_NAME: &str = "NotoSans";
 
 // maxrect packer

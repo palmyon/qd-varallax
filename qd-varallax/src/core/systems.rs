@@ -420,11 +420,7 @@ impl VxFontSystem {
 			let mut cursor = VxVec2::default();
 
 			for ch in cmd.text.chars() {
-				let Some((atlas_and_texture_id, glyph_info)) =
-					self.glyph_map.get(&(resolved_family, ch))
-				else {
-					continue;
-				};
+				let Some((atlas_and_texture_id, glyph_info)) = self.glyph_map.get(&(resolved_family, ch)) else { continue; };
 
 				if ch == '\n' {
 					cursor.set_x(0.0);
@@ -458,5 +454,12 @@ impl VxFontSystem {
 		self.update_bind_group(gpu);
 
 		all_array
+	}
+
+	pub fn debug_atlas(&self, raw_atlas_index: i32) -> VxVertexContainer<VxTexVertex> {
+		let (vert, index) = tessellate::tessellate_texture(
+			VxRect::from_u32(0, 0, 2048, 2048), 0xFFFFFF.into(), VxRect::from_i32(0, 0, 1, 1), raw_atlas_index
+		);
+		VxVertexContainer::new(vert.to_vec(), index.to_vec())
 	}
 }
