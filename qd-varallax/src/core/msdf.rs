@@ -57,7 +57,7 @@ impl VxMsdfGenResult {
 pub struct VxMsdfGenerator;
 
 impl VxMsdfGenerator {
-	pub const RANGE: f32 = 10.0;
+	pub const RANGE: f32 = 4.0;
 
 	pub fn create_msdf(context: &mut ScaleContext, font_data: &[u8], msdf_size: f32, ch: char) -> Option<VxMsdfGenResult> {
 		let font_ref = VxFontDataGenerator::create_fontref(font_data)?;
@@ -146,12 +146,20 @@ impl VxFontDataGenerator {
 	}
 	#[inline(always)]
 	pub fn create_bearing_y(bounding_rect: VxRect, range: f32) -> f32 {
-		bounding_rect.height() - range
+		(bounding_rect.y() + bounding_rect.height()) - range
 	}
-	pub fn create_vertical_metrics(font_ref: &FontRef<'_>) -> VxVerticalMetrics {
+	pub fn create_vertical_metrics(font_ref: &FontRef<'_>, font_size: f32) -> VxVerticalMetrics {
 		let metrics = MetricsProxy::from_font(&font_ref);
 		let m = metrics.materialize_metrics(&font_ref, &[]);
-		VxVerticalMetrics { line_height: m.leading, ascent: m.ascent, descent: m.descent }
+
+		let upem = font_ref.metrics(&[]).units_per_em as f32;
+		let to_pixels = |units: f32| (units * font_size) / upem;
+
+		VxVerticalMetrics {
+			line_height: to_pixels(m.leading),
+			ascent: to_pixels(m.ascent),
+			descent: to_pixels(m.descent)
+		}
 	}
 	#[inline]
 	pub fn create_padding(range: f32) -> f32 { range * 2.0 }

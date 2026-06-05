@@ -52,6 +52,8 @@ impl ApplicationHandler<VxEvent> for VxAppHandler {
 		// 初期化前なら初期化
 		if self.resources.is_none() {
 			self.resources = Some(VxAppResources::new());
+		} else {
+			return;
 		}
 
 		let Some(resource) = &self.resources else { return; };

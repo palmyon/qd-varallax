@@ -419,22 +419,29 @@ impl VxRenderer {
 			return;
 		}
 
-		let mut all_vertices: Vec<T> = vec![];
-		let mut all_index: Vec<u16> = vec![];
+		let mut total_vert_len = 0;
+		let mut total_index_len = 0;
+		for container in &vertex_container {
+			total_vert_len += container.verts.len();
+			total_index_len += container.index.len();
+		}
+
+		let mut all_vertices: Vec<T> = Vec::with_capacity(total_vert_len);
+		let mut all_index: Vec<u16> = Vec::with_capacity(total_index_len);
+		draw_lines.reserve(vertex_container.len());
+
 		let mut current_vertex_offset = 0u16;
 
-		vertex_container.sort_by_key(|c| {
-			c.z_value()
-		});
+		vertex_container.sort_by_key(|c| c.z_value());
 
-		for mut container in vertex_container {
+		for mut container in vertex_container.drain(..) {
 			let mut verts = container.verts();
 			let len = verts.len() as u16;
 			let before_index_len = all_index.len() as u32;
 			all_vertices.append(&mut verts);
-			for i in container.index() {
-				all_index.push(i + current_vertex_offset);
-			}
+
+			all_index.extend(container.index().iter().map(|&i| i + current_vertex_offset));
+			
 			current_vertex_offset += len;
 
 			let draw_line = VxDrawLine::new(

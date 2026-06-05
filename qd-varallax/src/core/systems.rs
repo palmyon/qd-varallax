@@ -3,20 +3,47 @@ use ahash::AHashMap;
 use crate::{
 	core::{
 		glyph::{
-			FALLBACK_FONT, FALLBACK_FONT_NAME, VxFont, VxFontAtlas, VxFontFamilyHash, VxGlyphInfo, VxVerticalMetrics
+			FALLBACK_FONT,
+			FALLBACK_FONT_NAME,
+			VxFont,
+			VxFontAtlas,
+			VxFontFamilyHash,
+			VxGlyphInfo,
+			VxVerticalMetrics
 		},
-		gpu_resource::{VxBindlessTextureModule, VxGpuResource, VxGpuTextureData},
-		msdf::{VxFontDataGenerator, VxMsdfGenerator},
+		gpu_resource::{
+			VxBindlessTextureModule,
+			VxGpuResource,
+			VxGpuTextureData
+		},
+		msdf::{
+			VxFontDataGenerator,
+			VxMsdfGenerator
+		},
 	},
 	painter::{
-		painter::{VxDrawTextData, VxVertexContainer},
+		painter::{
+			VxDrawTextData,
+			VxVertexContainer
+		},
 		tessellate,
 	},
 	types::{
 		color::VxColorU8,
-		genelational_vector::{VxGenIndex, VxGenVector, VxSlot},
-		geometry::{VxRect, VxSize, VxVec2},
-		texture::{VxImage, VxTexture},
+		genelational_vector::{
+			VxGenIndex,
+			VxGenVector,
+			VxSlot
+		},
+		geometry::{
+			VxRect,
+			VxSize,
+			VxVec2
+		},
+		texture::{
+			VxImage,
+			VxTexture
+		},
 		vertex::VxTexVertex,
 	},
 };
@@ -162,7 +189,7 @@ impl VxFontSystem {
 		if let Some(font_ref) = VxFontDataGenerator::create_fontref(font_data) {
 			let family = VxFont::hash(font_family);
 
-			let vertical_metrics = VxFontDataGenerator::create_vertical_metrics(&font_ref);
+			let vertical_metrics = VxFontDataGenerator::create_vertical_metrics(&font_ref, Self::MSDF_SIZE);
 			self.vertical_metrics.insert(family, vertical_metrics);
 
 			self.fonts_data.insert(family, font_data.to_vec());
@@ -401,11 +428,12 @@ impl VxFontSystem {
 	pub(crate) fn generate_text_verices(
 		&mut self,
 		gpu: &VxGpuResource,
-		data: &[VxDrawTextData],
+		mut data: Vec<VxDrawTextData>,
 	) -> Vec<VxVertexContainer<VxTexVertex>> {
-		let mut all_array = Vec::new();
+		let total_bytes: usize = data.iter().map(|cmd| cmd.text.len()).sum();
+		let mut all_array = Vec::with_capacity(total_bytes);
 
-		for cmd in data {
+		for cmd in data.drain(..) {
 			let cmd_family = cmd.font.family();
 
 			let resolved_family = self.ensure_glyphs(gpu, Self::MSDF_SIZE, cmd_family, &cmd.text);
@@ -429,7 +457,7 @@ impl VxFontSystem {
 				}
 
 				let x = cursor.x() + (glyph_info.bearing_x * scale);
-				let y = cursor.y() + (glyph_info.bearing_y * scale);
+				let y = cursor.y() - (glyph_info.bearing_y * scale);
 				let w = glyph_info.atlas_rect.width() * scale;
 				let h = glyph_info.atlas_rect.height() * scale;
 
@@ -458,7 +486,10 @@ impl VxFontSystem {
 
 	pub fn debug_atlas(&self, raw_atlas_index: i32) -> VxVertexContainer<VxTexVertex> {
 		let (vert, index) = tessellate::tessellate_texture(
-			VxRect::from_u32(0, 0, 2048, 2048), 0xFFFFFF.into(), VxRect::from_i32(0, 0, 1, 1), raw_atlas_index
+			VxRect::from_u32(0, 0, 2048, 2048),
+			0xFFFFFF.into(),
+			VxRect::from_i32(0, 0, 1, 1),
+			raw_atlas_index
 		);
 		VxVertexContainer::new(vert.to_vec(), index.to_vec())
 	}

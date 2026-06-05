@@ -64,9 +64,9 @@ impl VxWindow for MainWindow {
         self.add_widget(button);
 
         let mut text = VxTextWidget::new(
-            "あいうえおかきくけこ",
-            VxFont::from_family_str("kokumr", 32.0),
-            VxColor::from_hex(0xFFFFFF),
+            "あいうえおかきくけこ\nはいこんにちは。私は元気ですがあなたはそうではありません。",
+            VxFont::from_family_str("kokumr", 40.0),
+            VxColor::from_hex(0x00D4FF),
             None,
         );
         text.set_pos(VxVec2::from_i32(350, 120));

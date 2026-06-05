@@ -35,7 +35,11 @@ pub(crate) struct VxDrawTextData {
 impl VxDrawTextData {
 	pub(crate) fn new(text: impl Into<String>, font: VxFont, color: VxColor, matrix: VxMatrix3x3) -> Self {
 		Self {
-			text: text.into(), font, color, matrix, z_value: VxVertexZValue::Disable
+			text: text.into(),
+			font,
+			color,
+			matrix,
+			z_value: VxVertexZValue::Disable
 		}
 	}
 	pub fn z_value(&mut self) -> VxVertexZValue { std::mem::take(&mut self.z_value) }
@@ -61,8 +65,8 @@ impl VxVertexZValue {
 }
 
 pub(crate) struct VxVertexContainer<T> {
-	verts: Vec<T>,
-	index: Vec<u16>,
+	pub(crate) verts: Vec<T>,
+	pub(crate) index: Vec<u16>,
 	z_value: VxVertexZValue,
 }
 impl<T> VxVertexContainer<T> {
