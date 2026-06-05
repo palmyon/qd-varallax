@@ -484,7 +484,7 @@ impl VxFontSystem {
 		all_array
 	}
 
-	pub fn debug_atlas(&self, raw_atlas_index: i32) -> VxVertexContainer<VxTexVertex> {
+	pub(crate) fn debug_atlas(&self, raw_atlas_index: i32) -> VxVertexContainer<VxTexVertex> {
 		let (vert, index) = tessellate::tessellate_texture(
 			VxRect::from_u32(0, 0, 2048, 2048),
 			0xFFFFFF.into(),
@@ -492,5 +492,36 @@ impl VxFontSystem {
 			raw_atlas_index
 		);
 		VxVertexContainer::new(vert.to_vec(), index.to_vec())
+	}
+
+	pub fn create_text_bounding_rect(&self, font: VxFont, text: &str) -> VxRect {
+		let mut result_rect = VxRect::default();
+
+		let scale = font.pixel_size() / Self::MSDF_SIZE;
+
+		let mut cursor = VxVec2::default();
+		let Some(vertical_metrics) = self.vertical_metrics.get(&font.family()) else { return result_rect; };
+		let line_height = vertical_metrics.create_line_height();
+		for ch in text.chars() {
+			let Some((_, info)) = self.glyph_map.get(&(font.family(), ch)) else { continue; };
+
+			if ch == '\n' {
+				cursor.set_x(0.0);
+				cursor.set_y(cursor.y() + (line_height * scale));
+				continue;
+			}
+
+			result_rect = result_rect.union({
+				let x = cursor.x() + (info.bearing_x * scale);
+				let y = cursor.y() - (info.bearing_y * scale);
+				let w = info.atlas_rect.width() * scale;
+				let h = info.atlas_rect.height() * scale;
+
+				VxRect::new(x, y, w, h)
+			});
+			cursor.set_x(cursor.x() + (info.advance * scale));
+		}
+
+		result_rect
 	}
 }

@@ -8,8 +8,11 @@ use winit::{
 
 use crate::{
     abstractions::{
-        abstract_widgets::{VxWidget, VxWidgetId},
-        window_function::VxWindowFunctions,
+		abstract_widgets::{
+			VxWidget,
+			VxWidgetId
+		},
+		window_function::VxWindowFunctions
     },
     core::{
         gpu_resource::VxGpuResource,

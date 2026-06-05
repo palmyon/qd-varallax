@@ -176,9 +176,11 @@ impl VxVerticalMetrics {
 			descent,
 		}
 	}
+	#[inline]
 	pub fn is_empty(&self) -> bool {
 		self.line_height <= 0.0 && self.ascent <= 0.0 && self.descent <= 0.0
 	}
+	#[inline]
 	pub fn create_line_height(&self) -> f32 {
 		self.ascent + self.descent + self.line_height
 	}

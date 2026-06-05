@@ -1,6 +1,6 @@
 
 use crate::{
-	abstractions::{abstract_layouts::VxAlignment, abstract_widgets::{
+	abstractions::{abstract_layouts::{VxAlignment}, abstract_widgets::{
 		VxWidget, VxWidgetHandler, VxWidgetId
 	}},
 	core::{
@@ -43,7 +43,12 @@ impl VxScene {
 	}
 
 	// private methods
-	fn paint_widget(&mut self, res: &mut VxAppResources, id: VxWidgetId, painter: &mut VxPainter) {
+	fn paint_widget(
+		&mut self,
+		res: &mut VxAppResources,
+		id: VxWidgetId,
+		painter: &mut VxPainter,
+	) {
 		let Some(widget) = self.widgets.get_mut(id.id()) else { return; };
 		if !widget.is_visible() {
 			return;
@@ -53,6 +58,7 @@ impl VxScene {
 
 		widget.paint(painter);
 		painter.set_vertex_z_value(widget.z_value());
+		widget.create_bounding_rect_event(&res.fonts);
 		let pos = widget.pos();
 		let z = widget.z_value();
 		let bounding_rect = widget.bounding_rect();
@@ -201,12 +207,16 @@ impl VxScene {
 			if result == VxEventResult::Accept {
 				return VxEventResult::Accept;
 			}
-			current_id = *self.widgets.get(id.id()).unwrap().parent();
+			current_id = self.widgets.get(id.id()).unwrap().parent();
 		}
 		VxEventResult::Ignore
 	}
 	// Events
-	pub fn paint_event(&mut self, res: &mut VxAppResources, painter: &mut VxPainter) {
+	pub fn paint_event(
+		&mut self,
+		res: &mut VxAppResources,
+		painter: &mut VxPainter,
+	) {
 		for id in self.top_level_widgets.clone() {
 			self.paint_widget(res, id, painter);
 		}

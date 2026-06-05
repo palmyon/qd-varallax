@@ -42,15 +42,14 @@ impl VxWindow for MainWindow {
         );
         self.add_widget(bg);
 
-        let mut texture_w = VxTextureWidget::new(
-            VxRect::from_i32(0, 0, 500, 500),
+        let texture_w = VxTextureWidget::new(
+            VxRect::from_i32(0, 0, 1920, 1080),
             VxTexture::from_file(std::path::Path::new(
                 "qd-varallax/src/develop_examples/stars.png",
             ))
             .unwrap(),
             None,
         );
-        texture_w.set_pos((150.0, 300.0).into());
         self.add_widget(texture_w);
 
         let mut button = VxButtonWidget::new(
@@ -64,7 +63,7 @@ impl VxWindow for MainWindow {
         self.add_widget(button);
 
         let mut text = VxTextWidget::new(
-            "あいうえおかきくけこ\nはいこんにちは。私は元気ですがあなたはそうではありません。",
+            "はいこんにちは。\nどうして、abcdygij",
             VxFont::from_family_str("kokumr", 40.0),
             VxColor::from_hex(0x00D4FF),
             None,

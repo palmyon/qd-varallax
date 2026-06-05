@@ -1,5 +1,5 @@
 use crate::{
-	abstractions::abstract_layouts::VxAlignment, core::{gpu_resource::VxGpuResource, systems::VxTextureSystem, vx_event::{
+	abstractions::abstract_layouts::VxAlignment, core::{gpu_resource::VxGpuResource, systems::{VxFontSystem, VxTextureSystem}, vx_event::{
 		VxEventResult,
 		VxKeyEvent,
 		VxMouseEvent
@@ -81,9 +81,9 @@ impl VxWidgetStats {
 	}
 	// getters
 	#[inline]
-	pub fn widget_id(&self) -> &Option<VxWidgetId> { &self.id }
+	pub fn widget_id(&self) -> Option<VxWidgetId> { self.id }
 	#[inline]
-	pub fn parent(&self) -> &Option<VxWidgetId> { &self.parent }
+	pub fn parent(&self) -> Option<VxWidgetId> { self.parent }
 	#[inline]
 	pub fn children(&self) -> &Vec<VxWidgetId> { &self.children }
 	#[inline]
@@ -180,9 +180,9 @@ pub trait VxWidget: VxWidgetInternal {
 
 	// Stats Wrapping
 	#[inline]
-	fn widget_id(&self) -> &Option<VxWidgetId> { &self.stats().widget_id() }
+	fn widget_id(&self) -> Option<VxWidgetId> { self.stats().widget_id() }
 	#[inline]
-	fn parent(&self) -> &Option<VxWidgetId> { &self.stats().parent() }
+	fn parent(&self) -> Option<VxWidgetId> { self.stats().parent() }
 	#[inline]
 	fn children(&self) -> &Vec<VxWidgetId> { &self.stats().children() }
 	#[inline]
@@ -264,6 +264,9 @@ pub trait VxWidget: VxWidgetInternal {
 	}
 	fn register_texture_event(&mut self, gpu: &VxGpuResource, system: &mut VxTextureSystem) {
 		let _ = gpu;
+		let _ = system;
+	}
+	fn create_bounding_rect_event(&mut self, system: &VxFontSystem) {
 		let _ = system;
 	}
 }

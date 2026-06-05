@@ -34,14 +34,15 @@ impl VxWidget for VxTextWidget {
 		self.bounding_rect.with_transform(self.transform())
 	}
 	fn paint(&mut self, painter: &mut crate::painter::painter::VxPainter) {
-		if self.change_bounding_rect {
-			self.change_bounding_rect = false;
-			// self.bounding_rect = painter.font_system.create_text_bounding_rect(&self.text, &self.font);
-		}
 		painter.push_tranform(self.transform());
-		painter.draw_text(self.text.clone(), self.font.clone(), self.color);
+		painter.draw_text(&self.text, self.font, self.color);
 		painter.draw_rect(self.bounding_rect, VxColor::from_hex_with_alpha(0xFF000066));
 		painter.pop_transform();
+	}
+	fn create_bounding_rect_event(&mut self, system: &crate::core::systems::VxFontSystem) {
+		if self.change_bounding_rect {
+			self.bounding_rect = system.create_text_bounding_rect(self.font, &self.text);
+		}
 	}
 }
 

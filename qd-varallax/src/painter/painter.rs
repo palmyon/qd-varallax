@@ -191,7 +191,7 @@ impl VxPainter {
 		);
 	}
 
-	pub fn draw_text(&mut self, text: impl Into<String>, font: VxFont, color: VxColor) {
+	pub fn draw_text(&mut self, text: &str, font: VxFont, color: VxColor) {
 		let matrix = *self.current_tranform();
 		self.text_data.push(VxDrawTextData::new(text, font, color, matrix));
 	}
