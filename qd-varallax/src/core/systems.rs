@@ -143,8 +143,6 @@ impl VxTextureSystem {
 	}
 }
 
-// メモ!前提情報: アトラス上に複数種類のフォントを置くように作る。
-
 pub(crate) struct VxFontSystem {
 	// バインドレステクスチャモジュール
 	pub module: VxBindlessTextureModule,

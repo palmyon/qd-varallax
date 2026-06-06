@@ -19,8 +19,16 @@ use crate::{
         button::{VxButtonStyle, VxButtonWidget},
         text::VxTextWidget,
         theme::VxThemeMode,
-        vx_message_box::{self, VxMessageBox, VxMessageBoxButton, VxMessageBoxResult},
-        vx_widgets::{VxRectWidget, VxTextureWidget},
+        vx_message_box::{
+			self,
+			VxMessageBox,
+			VxMessageBoxButton,
+			VxMessageBoxResult
+		},
+        vx_widgets::{
+			VxRectWidget,
+			VxTextureWidget
+		},
     },
 };
 use vx_macro::VxWindowDerive;
@@ -63,7 +71,7 @@ impl VxWindow for MainWindow {
         self.add_widget(button);
 
         let mut text = VxTextWidget::new(
-            "はいこんにちは。\nどうして、abcdygij",
+            "はいこんにちは。\n現段階では、レイアウト機能を実装できていないが、フォントシステムはどうにかなったため、\n次に実装していこうと思う",
             VxFont::from_family_str("kokumr", 40.0),
             VxColor::from_hex(0x00D4FF),
             None,
