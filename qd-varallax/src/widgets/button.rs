@@ -179,12 +179,12 @@ impl VxWidget for VxButtonWidget {
 impl VxButtonWidget {
 	pub fn new(
 		rect: VxRectR,
-		text: impl Into<String>,
+		text: &str,
 		style: VxButtonStyle,
 		parent: Option<VxWidgetId>
 	) -> Self {
 		let mut t = VxTextWidget::new(text, VxFont::from_family_str("kokumr", 20.0), VxColor::from_hex(0xFFFFFF), None);
-		t.stats_mut().set_alignment(VxAlignment::LeftCenter);
+		t.stats_mut().set_alignment(VxAlignment::Center);
 		let mut stats = VxWidgetStats::new(parent);
 		stats.add_child_widget(t);
 		Self {

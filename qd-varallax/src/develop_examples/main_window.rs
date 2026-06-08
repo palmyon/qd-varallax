@@ -6,29 +6,19 @@ use crate::{
             VxWindowStats,
         },
     },
-    core::{
-        glyph::VxFont,
-        vx_event::{VxEventResult, VxKey},
-    },
+    core::glyph::VxFont,
     types::{
         color::VxColor,
         geometry::{VxRect, VxRectR, VxVec2},
-        texture::VxTexture,
     },
     widgets::{
-        button::{VxButtonStyle, VxButtonWidget},
+        button::{
+			VxButtonStyle,
+			VxButtonWidget
+		},
         text::VxTextWidget,
         theme::VxThemeMode,
-        vx_message_box::{
-			self,
-			VxMessageBox,
-			VxMessageBoxButton,
-			VxMessageBoxResult
-		},
-        vx_widgets::{
-			VxRectWidget,
-			VxTextureWidget
-		},
+        vx_widgets::VxRectWidget,
     },
 };
 use vx_macro::VxWindowDerive;
@@ -43,70 +33,60 @@ pub struct MainWindow {
 
 impl VxWindow for MainWindow {
     fn init_event(&mut self) {
-        let bg = VxRectWidget::new(
-            VxRect::from_i32(0, 0, 1920, 1080),
-            VxColor::from_hex(0x1E1E1E),
-            None,
-        );
-        self.add_widget(bg);
+        let mut bg = VxRectWidget::new(VxRect::from_i32(0, 0, 1920, 1280), VxColor::from_hex(0x202020), None);
+		bg.set_z_value(-3);
+		self.add_widget(bg);
 
-        let texture_w = VxTextureWidget::new(
-            VxRect::from_i32(0, 0, 1920, 1080),
-            VxTexture::from_file(std::path::Path::new(
-                "qd-varallax/src/develop_examples/stars.png",
-            ))
-            .unwrap(),
-            None,
-        );
-        self.add_widget(texture_w);
+		for i in 1..1920 {
+			// let mut button = VxButtonWidget::new(
+			// 	VxRectR::new(
+			// 		VxRect::from_i32(0, 0, 1, 100),
+			// 		10.0
+			// 	),
+			// 	"",
+			// 	VxButtonStyle::new(
+			// 		VxThemeMode::CustomMode { std_color: VxColor::from_hsv(i as f32 / 1920.0, 1.0, 1.0) },
+			// 		VxFont::from_family_str("kokumr", 30.0)
+			// 	),
+			// 	None,
+			// );
+			// button.set_pos(VxVec2::from_i32(i, 350));
+			// self.add_widget(button);
 
-        let mut button = VxButtonWidget::new(
-            VxRectR::new(VxRect::from_i32(0, 0, 100, 30), 10.0),
-            "選択してください",
-            VxButtonStyle::new(VxThemeMode::DarkMode, VxFont::from_family_str("kokumr", 40.0)),
-            None,
-        );
-        button.set_z_value(0);
-        button.set_pos(VxVec2::new(200.0, 130.0));
-        self.add_widget(button);
+			let mut rect = VxRectWidget::new(
+				VxRect::from_i32(0, 0, 1, 1280),
+				VxColor::from_hsv(i as f32 / 1920.0, 1.0, 1.0),
+				None,
+			);
+			rect.set_pos(VxVec2::from_i32(i, 0));
+			self.add_widget(rect);
+		}
 
-        let mut text = VxTextWidget::new(
-            "はいこんにちは。\n現段階では、レイアウト機能を実装できていないが、フォントシステムはどうにかなったため、\n次に実装していこうと思う",
-            VxFont::from_family_str("kokumr", 40.0),
-            VxColor::from_hex(0x00D4FF),
-            None,
-        );
-        text.set_pos(VxVec2::from_i32(350, 120));
-        self.add_widget(text);
-    }
+		let mut button = VxButtonWidget::new(
+			VxRectR::new(
+				VxRect::from_i32(0, 0, 200, 50),
+				10.0
+			),
+			"",
+			VxButtonStyle::new(
+				VxThemeMode::DarkMode,
+				VxFont::from_family_str("kokumr", 30.0)
+			),
+			None
+		);
+		button.set_pos(VxVec2::from_i32(250, 350));
+		button.set_z_value(50);
+		self.add_widget(button);
 
-    fn key_press_event(
-        &mut self,
-        event: &crate::core::vx_event::VxKeyEvent,
-    ) -> crate::core::vx_event::VxEventResult {
-        match event.key() {
-            VxKey::F11 => {
-                if self.is_fullscreen() {
-                    self.show_normal();
-                } else {
-                    self.show_fullscreen();
-                }
-                return VxEventResult::Accept;
-            }
-            VxKey::Escape => {
-                let res = vx_message_box::info("確認", "終了しますか?", VxMessageBoxButton::Ok);
-                if res == VxMessageBoxResult::Ok {
-                    self.close();
-                    return VxEventResult::Accept;
-                }
-            }
-            VxKey::Enter => {
-                VxMessageBox::info(self, "情報", "はいこんにちは");
-            }
-            _ => {}
-        }
-        VxEventResult::Ignore
-    }
+		let mut text = VxTextWidget::new(
+			"←Clickable\n日本語も表示可能です。\nしかしながら、頂点の縁辺りに残存する何かがあって、\n改善点もあります。空白打てないし。",
+			VxFont::from_family_str("kokumr", 50.0),
+			VxColor::from_hex(0x000000),
+			None,
+		);
+		text.set_pos(VxVec2::from_i32(460, 380));
+		self.add_widget(text);
+	}
 }
 
 impl MainWindow {
