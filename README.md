@@ -1,6 +1,6 @@
 <div align = "center">
 	<picture>
-		<img src = "./image/logo.png", width = 30%>
+		<img src = "./image/logo.png" width = 30%>
 	</picture>
 		<h1>QuantumDivision Vector Parallax</h1>
 			<a href = "https://www.rust-lang.org/">
@@ -10,7 +10,7 @@
 				<img src = "https://img.shields.io/badge/WebGPU-990000?style=for-the-badge&logo=webgpu&logoColor=white">
 			</a>
 			<a href = "https://wgpu.rs/">
-				<img src = "https://img.shields.io/badge/wgpu-green?style=for-the-badge">
+				<img src = "https://img.shields.io/badge/wgpu-green?style=for-the-badge&logo=webgpu">
 			</a>
 			<br>
 			<a href = "https://crates.io/crates/winit">
@@ -31,7 +31,7 @@
 
 # スクリーンショット
 <picture>
-	<img src = "./image/example.png", width="100%">
+	<img src = "./image/example.png" width="100%">
 </picture>
 背景のゲーミングカラーは
 <a href = "./qd-varallax/src/widgets/vx_widgets.rs">VxRectWidget</a>
@@ -67,7 +67,7 @@
 use qd_varallax::{
 	core::application::VxApplication,
 	widgets::default_window::VxDefaultWindow,
-}
+};
 
 fn main() {
 	// アプリケーションを作成
@@ -83,3 +83,9 @@ fn main() {
 	app.exec();
 }
 ```
+<br>
+
+# ロードマップ
+現状実装できているもの、できていないものについてです。
+
+* [x] wgpuパイプラインの整備
