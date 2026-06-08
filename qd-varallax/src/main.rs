@@ -15,7 +15,7 @@ use crate::{
 };
 
 fn main() {
-    let mut app = VxApplication::new();
+	let mut app = VxApplication::new();
 	let window = MainWindow::new(Default::default());
 	app.add_window(window);
 	app.exec();
