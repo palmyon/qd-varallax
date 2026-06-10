@@ -1,6 +1,6 @@
 <div align = "center">
 	<picture>
-		<img src = "./image/logo.png" width = 30%>
+		<img src = "./image/logo.png" width = 50%>
 	</picture>
 		<h1>QuantumDivision Vector Parallax</h1>
 			<a href = "https://www.rust-lang.org/">
@@ -30,12 +30,57 @@
 			</a>
 </div>
 
+# Overview
+### <i>QuantumDivision Vector Parallax (QD-Varallax)</i><br>
+is a high-performance GUI library built with `Rust` and `WebGPU`.
+
+# Screenshot
+<picture>
+	<img src = "./image/example.png" width = "100%">
+</picture>
+
+### This screenshots demonstrates:
+* A rainbow background rendered using 1,920
+<a href = "./qd-varallax/src/widgets/vx_widgets.rs">VxRectWidgets.</a>
+* A placed <a href = "./qd-varallax/src/widgets/button.rs">VxButtonWidget</a>.
+* Text rendering rendered by a <a href = "./qd-varallax/src/widgets/text.rs">VxTextWidget</a>.
+
+# Features
+* **Pure Rust**
+* **Cross-platform surpport (5 major OSs + WebAssembly)**
+* **Fully native GPU rendering**
+* **MSDF text rendering with efficient dynamic packing**
+* **SDF-based shape rendering**
+* **WideBVH-acceralated hit detection**
+* **Thread-safe signal system**
+* **Bindless texture system**
+* **Efficient draw calls via batching optimization**
+* **Highly extensible widgets and windows**
+* **Hybrid Retained and Immediate mode rendering**
+* **Reduced boilerplate via Derive and `macro_rules!` macros**
+
+# Architecture
+QD-Varallax implements an architecture roughly outlined in the diagram below:
+<br><br>
+<picture>
+	<img src = "./image/qd-varallax-architecture.png">
+</picture>
+
+## Main components
+* <b><a href = "./qd-varallax/src/core/application.rs">VxApplication</a></b> -
+Manages the `winit` EventLoop and WindowEvents, dispatching them to their respective windows.
+* <b><a href = "./qd-varallax/src/core/resource.rs">VxAppResources</a></b> -
+Manages the `wgpu` resources and maintains application-wide shared data.
+* <b><a href = "./qd-varallax/src/core/renderer.rs">VxRenderer</a></b> -
+A components that sorts vertices from <a href = "./qd-varallax/src/abstractions/abstract_windows.rs">VxWindowStats</a>,
+writing them to a buffer and executing batch rendering.
+
 
 <details>
 	<summary><b>日本語バージョン(クリックで展開)</b></summary>
 
 # 概要
-「QuantumDivision Vector Parallax」<br>
+<b>「QuantumDivision Vector Parallax」</b><br>
 略して「QD-Varallax」は、RustとWebGPUを使用した、超高速マルチプラットフォームGUIフレームワークです。
 <br><br>
 
@@ -58,7 +103,7 @@
 * **完全ネイティブGPU描画**
 * **テキストのMSDF描画&効率的な動的パッキング**
 * **SDFを使った図形描画**
-* **BVHヒット判定**
+* **WideBVHヒット判定**
 * **スレッドセーフシグナルシステム**
 * **バインドレステクスチャシステムの採用**
 * **バッチング最適化による描画命令の効率化**
@@ -74,29 +119,28 @@ QD-Varallaxでは、大まかに以下の図(英語版と共通)のようなア�
 	<img src = "./image/qd-varallax-architecture.png">
 </picture>
 ## 主要コンポーネント
-* <b><a href = "./qd-varallax/src/core/application.rs">VxApplication</a></b> - winitのイベントループとウィンドウイベントを管理し、それぞれのウィンドウに振り分けます。
-* <b><a href = "./qd-varallax/src/core/resource.rs">VxAppResources</a></b> - wgpuのリソースを管理し、アプリ共通のデータを保有&管理しています。
-* <b><a href = "./qd-varallax/src/core/renderer.rs">VxRenderer</a></b> - 
-<a href = "./qd-varallax/src/abstractions/abstract_windows.rs">VxWindowStats</a>から
-受け取った頂点をソートしてバッファに書き込み、バッチング描画を実行するコンポーネントです。
-* <b><a href = "./qd-varallax/src/abstractions/abstract_windows.rs">VxWindowStats</a></b> - ウィンドウ単位のリソースを管理し、ウィンドウ本体のデータとして動作します。
-* <b><a href = "./qd-varallax/src/painter/painter.rs">VxPainter</a></b> - 描画ループごとに作成され、paintループでウィジェットの頂点や描画データを作成します。
-* <b><a href = "./qd-varallax/src/core/scene.rs">VxScene</a></b> - ウィジェット本体を管理し、ウィジェットへ各イベントを配信するコンポーネントです。
-* <b><a href = "./qd-varallax/src/abstractions/abstract_widgets.rs">VxWidget</a></b> - ウィジェット本体となるトレイトです。このトレイトを継承し、データを持たせることで、ウィジェットとして動作します。
+* <b><a href = "./qd-varallax/src/core/application.rs">VxApplication</a></b> - winitのイベントループとウィンドウイベントを管理し、それぞれのウィンドウに振り分ける。
+* <b><a href = "./qd-varallax/src/core/resource.rs">VxAppResources</a></b> - wgpuのリソースを管理し、アプリ共通のデータを保有&管理する。
+* <b><a href = "./qd-varallax/src/core/renderer.rs">VxRenderer</a></b> - <a href = "./qd-varallax/src/abstractions/abstract_windows.rs">VxWindowStats</a>から
+受け取った頂点をソートしてバッファに書き込み、バッチング描画を実行するコンポーネント。
+* <b><a href = "./qd-varallax/src/abstractions/abstract_windows.rs">VxWindowStats</a></b> - ウィンドウ単位のリソースを管理し、ウィンドウ本体のデータとして動作する。
+* <b><a href = "./qd-varallax/src/painter/painter.rs">VxPainter</a></b> - 描画ループごとに作成され、paintループでウィジェットの頂点や描画データを作成する。
+* <b><a href = "./qd-varallax/src/core/scene.rs">VxScene</a></b> - ウィジェット本体を管理し、ウィジェットへ各イベントを配信するコンポーネント。
+* <b><a href = "./qd-varallax/src/abstractions/abstract_widgets.rs">VxWidget</a></b> - ウィジェット本体となるトレイト。このトレイトを継承し、データを持たせることで、ウィジェットとして動作する。
 
 ## 主要機能
 ### アプリケーション
-* `winit`のイベントを管理し、各ウィンドウに適切なイベントを変換して振り分けます。
-* アプリケーション全体のリソース(`VxAppResources`)を保有し、必要となるイベントで参照を渡します。
-* 全てのウィンドウを管理し、描画チェックのループや、アプリケーションの終了などを自動で行います。
+* `winit`のイベントを管理し、各ウィンドウに適切なイベントを変換して振り分ける。
+* アプリケーション全体のリソース(`VxAppResources`)を保有し、必要となるイベントで参照を渡す。
+* 全てのウィンドウを管理し、描画チェックのループや、アプリケーションの終了などを自動で行う。
 
 ### ウィジェット
 * <a href = "./qd-varallax/src/abstractions/abstract_widgets.rs">VxWindow</a>
-トレイトを継承し、Deriveマクロを使うことで、ウィジェットとして動作させることが出来ます。
+トレイトを継承し、Deriveマクロを使うことで、ウィジェットとして動作させることが出来る。
 * <a href = "./qd-varallax/src/core/scene.rs">VxScene</a>
 で一括管理され、
 <a href = "./qd-varallax/src/abstractions/abstract_widgets.rs">VxWidgetHandler</a>
-にIDと型情報を持たせることで実体を取得することが出来ます。
+にIDと型情報を持たせることで、<br>`VxScene`から実体を取得することが出来る。
 * `VxScene`から、適切なインプットイベントや、paintイベントが自動で呼ばれるようになっており、<br>
 ウィジェット側で自由にイベントをオーバーライドして、様々な動作を作ることが出来る。
 * <b>bounding_rect</b>形式を採用しており、部分的な更新や、当たり判定などに使用する。
