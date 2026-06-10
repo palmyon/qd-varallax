@@ -89,7 +89,43 @@ QD-Varallaxでは、大まかに以下の図(英語版と共通)のようなア�
 * `winit`のイベントを管理し、各ウィンドウに適切なイベントを変換して振り分けます。
 * アプリケーション全体のリソース(`VxAppResources`)を保有し、必要となるイベントで参照を渡します。
 * 全てのウィンドウを管理し、描画チェックのループや、アプリケーションの終了などを自動で行います。
+
 ### ウィジェット
+* <a href = "./qd-varallax/src/abstractions/abstract_widgets.rs">VxWindow</a>
+トレイトを継承し、Deriveマクロを使うことで、ウィジェットとして動作させることが出来ます。
+* <a href = "./qd-varallax/src/core/scene.rs">VxScene</a>
+で一括管理され、
+<a href = "./qd-varallax/src/abstractions/abstract_widgets.rs">VxWidgetHandler</a>
+にIDと型情報を持たせることで実体を取得することが出来ます。
+* `VxScene`から、適切なインプットイベントや、paintイベントが自動で呼ばれるようになっており、<br>
+ウィジェット側で自由にイベントをオーバーライドして、様々な動作を作ることが出来る。
+* <b>bounding_rect</b>形式を採用しており、部分的な更新や、当たり判定などに使用する。
+
+### レンダラー
+* シェーダー単位のレンダーモジュール構造体を作成し、テンプレートを削減。
+* <a href = "./qd-varallax/src/painter/painter.rs">VxPainter</a>
+が作成した頂点を、Z値でソートしたうえで`wgpu::Buffer`に書き込み、<br>
+独自の描画バッチングにより効率的に描画。
+* バッファサイズを確認し、足りなくなった際、必要サイズの1.5倍で再確保する設計。
+
+### テクスチャ&フォントリソース
+* バインドレステクスチャシステムにより、描画が効率的。
+* <a href = "./qd-varallax/src/types/genelational_vector.rs">VxGenVector</a>
+による世代管理により、削除済み要素へのアクセスを防止&高速なアクセスを実現。
+
+### シーン
+* ウィジェット本体を全て管理。
+* <a href = "./qd-varallax/src/abstractions/abstract_windows.rs">VxWindow</a>
+から受け取ったインプットイベントを、適切なウィジェットに配信する。
+* <a href = "./qd-varallax/src/core/bvh.rs">VxSpatialIndex</a> (`parry2d`を使用)
+による<b>WideBVH</b> (Bounding Volume Hierarchy)<br>
+を使った高速ヒット判定を実現。従来の
+<i><b>O(n)</b></i> 回のウィジェット探索ループから、<i><b>O(log N)</b></i>
+回まで減少。
+* <a href = "./qd-varallax/src/abstractions/abstract_windows.rs">VxWidgetStats</a>
+から受け取った
+<a href = "./qd-varallax/src/painter/painter.rs">VxPainter</a>を、全てのトップレベルウィジェットに配信し、子ウィジェットにも再帰的に配信する。
+
 
 # クイックスタート
 <a href = "./qd-varallax/src/widgets/default_window.rs">デフォルトの空のウィンドウ</a>
