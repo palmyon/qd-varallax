@@ -79,7 +79,7 @@ impl VxWindow for MainWindow {
 		self.add_widget(button);
 
 		let mut text = VxTextWidget::new(
-			"←Clickable\n日本語も表示可能です。\nしかしながら、頂点の縁辺りに残存する何かがあって、\n改善点もあります。空白打てないし。",
+			"取材受けてます！！！！",
 			VxFont::from_family_str("kokumr", 50.0),
 			VxColor::from_hex(0x000000),
 			None,

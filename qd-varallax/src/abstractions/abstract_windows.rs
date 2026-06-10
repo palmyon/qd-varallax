@@ -102,7 +102,8 @@ impl VxWindowStats {
         let window = Arc::new(window);
         let size = window.inner_size();
 
-        let surface = gpu.instance.create_surface(window.clone()).unwrap();
+        let surface = gpu.instance.create_surface(window.clone())
+			.expect("VxWindowStats> Critical: failed to create_surface.");
 
         let caps = surface.get_capabilities(&gpu.adapter);
         let config = wgpu::SurfaceConfiguration {

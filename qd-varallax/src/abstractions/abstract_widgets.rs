@@ -41,12 +41,14 @@ pub struct VxWidgetHandler<W: VxWidget> {
 }
 
 impl<W: VxWidget> VxWidgetHandler<W> {
+	#[inline]
 	pub fn new(id: VxWidgetId) -> Self {
 		Self {
 			id,
 			_marker: std::marker::PhantomData,
 		}
 	}
+	#[inline]
 	pub fn id(&self) -> VxWidgetId { self.id }
 }
 
