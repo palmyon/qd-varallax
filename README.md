@@ -2,32 +2,32 @@
 	<picture>
 		<img src = "./image/logo.png" width = 50%>
 	</picture>
-		<h1>QuantumDivision Vector Parallax</h1>
-			<a href = "https://www.rust-lang.org/">
-				<img src = "https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white">
-			</a>
-			<a href = "https://gpuweb.github.io/gpuweb/">
-				<img src = "https://img.shields.io/badge/WebGPU-990000?style=for-the-badge&logo=webgpu&logoColor=white">
-			</a>
-			<a href = "https://wgpu.rs/">
-				<img src = "https://img.shields.io/badge/wgpu-green?style=for-the-badge&logo=webgpu">
-			</a>
-			<br>
-			<a href = "https://crates.io/crates/winit">
-				<img src = "https://img.shields.io/crates/v/winit?label=winit&style=for-the-badge&logo=rust&color=blue">
-			</a>
-			<a href = "https://crates.io/crates/swash">
-				<img src = "https://img.shields.io/crates/v/swash?label=swash&style=for-the-badge&logo=rust&color=lightblue">
-			</a>
-			<a href = "https://crates.io/crates/fdsm">
-				<img src = "https://img.shields.io/crates/v/fdsm?label=fdsm&style=for-the-badge&logo=rust&color=purple">
-			</a><br>
-			<a href = "./LICENCE-MIT.txt">
-				<img src = "https://img.shields.io/badge/Licence-Mit-yellow.svg?style=for-the-badge">
-			</a>
-			<a href = "./LICENCE-APACHE.txt">
-				<img src = "https://img.shields.io/badge/Licence-Apache_2.0-blue.svg?style=for-the-badge">
-			</a>
+	<h1>QuantumDivision Vector Parallax</h1>
+		<a href = "https://www.rust-lang.org/">
+			<img src = "https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white">
+		</a>
+		<a href = "https://gpuweb.github.io/gpuweb/">
+			<img src = "https://img.shields.io/badge/WebGPU-990000?style=for-the-badge&logo=webgpu&logoColor=white">
+		</a>
+		<a href = "https://wgpu.rs/">
+			<img src = "https://img.shields.io/badge/wgpu-green?style=for-the-badge&logo=webgpu">
+		</a>
+		<br>
+		<a href = "https://crates.io/crates/winit">
+			<img src = "https://img.shields.io/crates/v/winit?label=winit&style=for-the-badge&logo=rust&color=blue">
+		</a>
+		<a href = "https://crates.io/crates/swash">
+			<img src = "https://img.shields.io/crates/v/swash?label=swash&style=for-the-badge&logo=rust&color=lightblue">
+		</a>
+		<a href = "https://crates.io/crates/fdsm">
+			<img src = "https://img.shields.io/crates/v/fdsm?label=fdsm&style=for-the-badge&logo=rust&color=purple">
+		</a><br>
+		<a href = "./LICENCE-MIT.txt">
+			<img src = "https://img.shields.io/badge/Licence-Mit-yellow.svg?style=for-the-badge">
+		</a>
+		<a href = "./LICENCE-APACHE.txt">
+			<img src = "https://img.shields.io/badge/Licence-Apache_2.0-blue.svg?style=for-the-badge">
+		</a>
 </div>
 
 # Overview
@@ -36,7 +36,7 @@ is a high-performance GUI library built with `Rust` and `WebGPU`.
 
 # Screenshot
 <picture>
-	<img src = "./image/example.png" width = "100%">
+	<img src = "./image/example.png">
 </picture>
 
 ### This screenshots demonstrates:
@@ -84,6 +84,18 @@ A component that manages widget instances and dispatches various events to `VxWi
 The core trait for widgets. Implementing this trait and incorporating `VxWidgetStats` allows a type to function as a widget.
 
 ## Main Functions
+### Application
+* Manages `winit` events, converting and dispatching them to their respective windows. 
+* Holds application-wide resources (`VxAppResources`) and provides references to them during relevant events.
+* Manages all windows, drives the <i>dirty-check</i> loop, and automatically handles application exit.
+
+### Widget
+* Functions as a widget via implementing the `VxWidget` trait and deriving <a href = "./vx_macro/src/lib.rs">`VxWidgetDerive`</a>.
+* Managed centrally by `VxScene`. By hoding the ID and type information within
+<a href = "./qd-varallax/src/abstractions/abstract_widgets.rs">`VxWidgetHandler`</a>,
+the actual widget instance can be retrieved from the scene.
+* Adopts the <b>bounding_rect</b> format, which is used for partial updates and hit detection.
+
 ### Renderer
 * Reduced boilerplate via per-shader render modules (<a href = "./qd-varallax/src/core/renderer.rs">VxRenderModule</a>).
 * Sorts vertices created by <a href = "./qd-varallax/src/painter/painter.rs">`VxPainter`</a> by Z-Value, writes them to a `wgpu::Buffer`,
@@ -97,12 +109,69 @@ and leverages custom draw batching for efficient rendering.
 
 ### Scene
 * Manages all widget instances.
-* Dispatches input events recieved from `VxWindow` to the appropriate widgets.
+* Dispatches input events received from `VxWindow` to the appropriate widgets.
 * Utilizes a `WideBVH`(Bounding Volume Hierarchy) via
-<a href = "./qd-varallax/src/core/bvh.rs">`VxSpatialIndex`</a> (powered by `parry2d`)
+<a href = "./qd-varallax/src/core/bvh.rs">`VxSpatialIndex`</a> (powered by `parry2d`) to acceralate
+hit detection, reducing the search complexity from <b><i>O(n)</i></b> to <b><i>O(logN)</i></b>.
+* Dispatches the `VxPainter` received from `VxWidgetStats` to all top-level widgets, and recursively to their child widgets.
 
+# Quick start
+This is a minimal example of creating a window using 
+<a href = "./qd-varallax/src/widgets/default_window.rs">`VxDefaultWindow`</a>.
+
+```rust
+// Hide the console window for Windows release builds. (Highly recommended!!!)
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
+use qd_varallax::{
+	core::application::VxApplication,
+	widgets::default_window::VxDefaultWindow,
+};
+
+fn main() {
+	// Create the application
+	let mut app = VxApplication::new();
+
+	// Create the window
+	let window = VxDefaultWindow::new(Default::default());
+
+	// Register the window as the initial window.
+	app.add_window(window);
+
+	// Start the application loop
+	app.exec();
+}
+```
+
+# Roadmap
+Current status of implemented and missing features.
+
+### Implemented Features
+* [x] Setting up the wgpu pipeline
+* [x] MSDF text rendering & atlas packing algorithm
+* [x] Shape rendering using SDF
+* [x] WideBVH-based hit detection
+* [x] Thread-safe signal system
+
+### Planned Features / Todo
+* [ ] Support for 5 major OSs + WebAssembly
+* [ ] Partial switching between Retained and Immediate modes
+* [ ] IME input support
+* [ ] Layout engine / Layout features
+* [ ] Accessbility support
+* [ ] Implmentation of detailed/basic widgets
+* [ ] <b>And so much more!!!!!!!!!!</b>
+
+# License
+QD-Varallax is distributed under the terms of both the Apache License (Ver-2.0) and MIT License.
+* **Apache License, Ver-2.0** ([LICENSE-APACHE](./LICENSE-APACHE.txt) or http://www.apache.org/licenses/LICENSE-2.0)
+* **MIT License** ([LICENSE-MIT](./LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+Feel free to choose whichever license suits your needs best and use it however you like!
+
+<br><br>
 <details>
-	<summary><b>日本語バージョン(クリックで展開)</b></summary>
+	<summary><h1>日本語バージョン(クリックで展開)</h1></summary>
 
 # 概要
 <b>「QuantumDivision Vector Parallax」</b><br>
@@ -162,7 +231,7 @@ QD-Varallaxでは、大まかに以下の図(英語版と共通)のようなア�
 
 ### ウィジェット
 * <a href = "./qd-varallax/src/abstractions/abstract_widgets.rs">VxWindow</a>
-トレイトを継承し、Deriveマクロを使うことで、ウィジェットとして動作させることが出来る。
+トレイトを継承し、<a href = "./vx_macro/src/lib.rs">VxWidgetDerive</a>マクロを使うことで、ウィジェットとして動作させることが出来る。
 * <a href = "./qd-varallax/src/core/scene.rs">VxScene</a>
 で一括管理され、
 <a href = "./qd-varallax/src/abstractions/abstract_widgets.rs">VxWidgetHandler</a>

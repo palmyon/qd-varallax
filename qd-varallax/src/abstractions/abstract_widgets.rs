@@ -63,7 +63,7 @@ pub struct VxWidgetStats {
 	alignment: VxAlignment,
 	block_signal: bool,
 
-	children_widgets: Vec<Box<dyn VxWidget>>,
+	children_widgets: Vec<Box<dyn VxWidget + Send + Sync>>,
 }
 
 impl VxWidgetStats {
@@ -109,7 +109,7 @@ impl VxWidgetStats {
 	#[inline]
 	pub fn is_block_signal(&self) -> bool { self.block_signal }
 	#[inline]
-	pub(crate) fn children_widgets(&mut self) -> Vec<Box<dyn VxWidget>> {
+	pub(crate) fn children_widgets(&mut self) -> Vec<Box<dyn VxWidget + Send + Sync>> {
 		std::mem::take(&mut self.children_widgets)
 	}
 
@@ -164,7 +164,7 @@ impl VxWidgetStats {
 	#[inline]
 	pub fn add_child(&mut self, child: VxWidgetId) { self.children.push(child); }
 	#[inline]
-	pub fn add_child_widget<W: VxWidget>(&mut self, child: W) {
+	pub fn add_child_widget<W: VxWidget + Send + Sync>(&mut self, child: W) {
 		self.children_widgets.push(Box::new(child));
 	}
 }
