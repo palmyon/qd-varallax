@@ -72,9 +72,34 @@ Manages the `winit` EventLoop and WindowEvents, dispatching them to their respec
 * <b><a href = "./qd-varallax/src/core/resource.rs">VxAppResources</a></b> -
 Manages the `wgpu` resources and maintains application-wide shared data.
 * <b><a href = "./qd-varallax/src/core/renderer.rs">VxRenderer</a></b> -
-A components that sorts vertices from <a href = "./qd-varallax/src/abstractions/abstract_windows.rs">VxWindowStats</a>,
+A component that sorts vertices from <a href = "./qd-varallax/src/abstractions/abstract_windows.rs">VxWindowStats</a>,
 writing them to a buffer and executing batch rendering.
+* <b><a href = "./qd-varallax/src/abstractions/abstract_windows.rs">VxWindowStats</a></b> - 
+Manages per-window resources serves as the core data for `VxWindow`.
+* <b><a href = "./qd-varallax/src/painter/painter.rs">VxPainter</a></b> - 
+Instantiated per render loop to generate vertices and rendering data for each widget during the `paint` event.
+* <b><a href = "./qd-varallax/src/core/scene.rs">VxScene</a></b> - 
+A component that manages widget instances and dispatches various events to `VxWidget`.
+* <b><a href = "./qd-varallax/src/abstractions/abstract_widgets.rs">VxWidget</a></b> - 
+The core trait for widgets. Implementing this trait and incorporating `VxWidgetStats` allows a type to function as a widget.
 
+## Main Functions
+### Renderer
+* Reduced boilerplate via per-shader render modules (<a href = "./qd-varallax/src/core/renderer.rs">VxRenderModule</a>).
+* Sorts vertices created by <a href = "./qd-varallax/src/painter/painter.rs">`VxPainter`</a> by Z-Value, writes them to a `wgpu::Buffer`,
+and leverages custom draw batching for efficient rendering.
+* Monitors buffer capacity and reallocates with a 1.5x scale factor when insufficent.
+
+### Texture & Font system
+* Efficient rendering via a bindless texture system.
+* Prevents access to deleted elements and enables high-speed access via generatinal managements with
+<a href = "./qd-varallax/src/types/genelational_vector.rs">`VxGenVector`</a>.
+
+### Scene
+* Manages all widget instances.
+* Dispatches input events recieved from `VxWindow` to the appropriate widgets.
+* Utilizes a `WideBVH`(Bounding Volume Hierarchy) via
+<a href = "./qd-varallax/src/core/bvh.rs">`VxSpatialIndex`</a> (powered by `parry2d`)
 
 <details>
 	<summary><b>日本語バージョン(クリックで展開)</b></summary>
@@ -126,7 +151,8 @@ QD-Varallaxでは、大まかに以下の図(英語版と共通)のようなア�
 * <b><a href = "./qd-varallax/src/abstractions/abstract_windows.rs">VxWindowStats</a></b> - ウィンドウ単位のリソースを管理し、ウィンドウ本体のデータとして動作する。
 * <b><a href = "./qd-varallax/src/painter/painter.rs">VxPainter</a></b> - 描画ループごとに作成され、paintループでウィジェットの頂点や描画データを作成する。
 * <b><a href = "./qd-varallax/src/core/scene.rs">VxScene</a></b> - ウィジェット本体を管理し、ウィジェットへ各イベントを配信するコンポーネント。
-* <b><a href = "./qd-varallax/src/abstractions/abstract_widgets.rs">VxWidget</a></b> - ウィジェット本体となるトレイト。このトレイトを継承し、データを持たせることで、ウィジェットとして動作する。
+* <b><a href = "./qd-varallax/src/abstractions/abstract_widgets.rs">VxWidget</a></b> - 
+ウィジェット本体となるトレイト。このトレイトを継承し、`VxWidgetStats`を持たせることで、ウィジェットとして動作する。
 
 ## 主要機能
 ### アプリケーション
@@ -208,7 +234,7 @@ fn main() {
 * [x] テキストのMSDF描画&アトラスパッキングアルゴリズム
 * [x] SDFを使った図形描画
 * [x] BVHヒット判定
-* [x] スレッドセーフシグナルシステムロードマップ
+* [x] スレッドセーフシグナルシステム
 
 ### できていないもの
 * [ ] 5大OS+WASM対応
