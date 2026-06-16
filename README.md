@@ -49,7 +49,7 @@ is a high-performance GUI library built with `Rust` and `WebGPU`.
 * **Pure Rust**
 * **Cross-platform surpport (5 major OSs + WebAssembly)**
 * **Fully native GPU rendering**
-* **MSDF text rendering with efficient dynamic packing**
+* **MTSDF text rendering with efficient dynamic packing**
 * **SDF-based shape rendering**
 * **WideBVH-acceralated hit detection**
 * **Thread-safe signal system**
@@ -148,7 +148,7 @@ Current status of implemented and missing features.
 
 ### Implemented Features
 * [x] Setting up the wgpu pipeline
-* [x] MSDF text rendering & atlas packing algorithm
+* [x] MTSDF text rendering & atlas packing algorithm
 * [x] Shape rendering using SDF
 * [x] WideBVH-based hit detection
 * [x] Thread-safe signal system
@@ -168,6 +168,9 @@ QD-Varallax is distributed under the terms of both the Apache License (Ver-2.0) 
 * **MIT License** ([LICENSE-MIT](./LICENSE-MIT) or http://opensource.org/licenses/MIT)
 
 Feel free to choose whichever license suits your needs best and use it however you like!
+
+# Extra
+I’m thinking of switching the hit detection from a pure WideBVH implementation to a TLAS/BLAS setup. WideBVH on its own doesn’t handle dynamic objects very well, so I figured it’s not really cut out for GUIs.
 
 <br><br>
 <details>
@@ -195,7 +198,7 @@ Feel free to choose whichever license suits your needs best and use it however y
 * **純Rust製**
 * **5大OS+WASM対応**(理論上)
 * **完全ネイティブGPU描画**
-* **テキストのMSDF描画&効率的な動的パッキング**
+* **テキストのMTSDF描画&効率的な動的パッキング**
 * **SDFを使った図形描画**
 * **WideBVHヒット判定**
 * **スレッドセーフシグナルシステム**
@@ -300,7 +303,7 @@ fn main() {
 
 ### できているもの
 * [x] wgpuパイプラインの整備
-* [x] テキストのMSDF描画&アトラスパッキングアルゴリズム
+* [x] テキストのMTSDF描画&アトラスパッキングアルゴリズム
 * [x] SDFを使った図形描画
 * [x] BVHヒット判定
 * [x] スレッドセーフシグナルシステム
@@ -320,6 +323,9 @@ QD-Varallaxは、以下のデュアルライセンスのもとで提供されて
 
 * **Apache License, Version 2.0** ([LICENSE-APACHE](/LICENSE-APACHE.txt)、または http://www.apache.org/licenses/LICENSE-2.0)
 * **MIT License** ([LICENSE-MIT](./LICENSE-MIT)、または http://opensource.org/licenses/MIT)
+
+# 開発中のおまけ
+2026-06-15: ヒット判定を、純WideBVH実装からTLAS/BLAS実装に変えようと思います。BVH単体だと動体に弱かったので、GUIに不向きだな～と思って。
 
 お好きな方を選んでお好きなようにお使いください。
 </details>

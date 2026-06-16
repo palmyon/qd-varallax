@@ -10,7 +10,7 @@ use fdsm::{
 	},
 	transform::Transform
 };
-use image::RgbImage;
+use image::Rgba32FImage;
 use nalgebra::{
 	Affine2,
 	Matrix3
@@ -40,62 +40,24 @@ use crate::{
 	}
 };
 
-pub struct VxMsdfGenResult {
+pub struct VxMtsdfGenResult {
 	pub ch: char,
-	pub msdf_texture: VxImage,
+	pub mtsdf_texture: VxImage,
 	pub bearing_x: f32,
 	pub bearing_y: f32,
 	pub advance: f32,
 }
 
-impl VxMsdfGenResult {
-	pub fn new(ch: char, msdf_texture: VxImage, bearing_x: f32, bearing_y: f32, advance: f32) -> Self {
-		Self { ch, msdf_texture, bearing_x, bearing_y, advance }
+impl VxMtsdfGenResult {
+	pub fn new(ch: char, mtsdf_texture: VxImage, bearing_x: f32, bearing_y: f32, advance: f32) -> Self {
+		Self { ch, mtsdf_texture, bearing_x, bearing_y, advance }
 	}
 }
 
-pub struct VxMsdfGenerator;
+pub struct VxMtsdfGenerator;
 
-impl VxMsdfGenerator {
+impl VxMtsdfGenerator {
 	pub const RANGE: f32 = 4.0;
-
-	pub fn create_msdf(context: &mut ScaleContext, font_data: &[u8], msdf_size: f32, ch: char) -> Option<VxMsdfGenResult> {
-		let font_ref = VxFontDataGenerator::create_fontref(font_data)?;
-		let mut scaler = VxFontDataGenerator::create_scaler(context, font_ref, msdf_size);
-		let glyph_id = VxFontDataGenerator::create_glyph_id(font_ref, ch);
-
-		// outline and bounding rect
-		let outline = VxFontDataGenerator::create_outline(glyph_id, &mut scaler)?;
-		let bounding_rect = VxFontDataGenerator::create_bounding_rect(&outline);
-
-		// font metrics data
-		let advance = VxFontDataGenerator::create_advance(font_ref, glyph_id, msdf_size);
-		let bearing_x = VxFontDataGenerator::create_bearing_x(bounding_rect, Self::RANGE);
-		let bearing_y = VxFontDataGenerator::create_bearing_y(bounding_rect, Self::RANGE);
-		let padding = VxFontDataGenerator::create_padding(Self::RANGE);
-
-		// generate msdf
-		let texture_size = VxFontDataGenerator::create_texture_size(bounding_rect, padding);
-		let mut shape = VxFontDataGenerator::create_shape(&outline);
-		VxFontDataGenerator::apply_transform_to_shape(&mut shape, texture_size, bounding_rect, Self::RANGE);
-		let msdf_texture = VxFontDataGenerator::create_msdf_from_shape(
-			shape, texture_size, Self::RANGE,
-		);
-		let msdf_size = VxSize::from_u32(msdf_texture.width(), msdf_texture.height());
-
-		Some(
-			VxMsdfGenResult::new(
-				ch,
-				VxImage::from_raw_rgb(
-					msdf_texture.into_raw(),
-					msdf_size
-				),
-				bearing_x,
-				bearing_y,
-				advance
-			)
-		)
-	}
 
 	pub fn create_msdf_from_outline(outline: Outline) -> VxImage {
 		let bounding_rect = VxFontDataGenerator::create_bounding_rect(&outline);
@@ -107,9 +69,9 @@ impl VxMsdfGenerator {
 		let padding = VxFontDataGenerator::create_padding(Self::RANGE);
 		let texture_size = VxFontDataGenerator::create_texture_size(bounding_rect, padding);
 		VxFontDataGenerator::apply_transform_to_shape(&mut shape, texture_size, bounding_rect, Self::RANGE);
-		let msdf_texture = VxFontDataGenerator::create_msdf_from_shape(shape, texture_size, Self::RANGE);
+		let msdf_texture = VxFontDataGenerator::create_mtsdf_from_shape(shape, texture_size, Self::RANGE);
 		let msdf_size = VxSize::from_u32(msdf_texture.width(), msdf_texture.height());
-		VxImage::from_raw_rgb(msdf_texture.into_raw(), msdf_size)
+		VxImage::from_raw_rgba_f(msdf_texture.into_raw(), msdf_size)
 	}
 }
 
@@ -228,12 +190,16 @@ impl VxFontDataGenerator {
 				0.0, 0.0, 1.0,
 		)));
 	}
-	pub fn create_msdf_from_shape(shape: Shape<Contour>, texture_size: VxSize, range: f32) -> RgbImage {
+	pub fn create_mtsdf_from_shape(shape: Shape<Contour>, texture_size: VxSize, range: f32) -> Rgba32FImage {
 		let coloring = Shape::edge_coloring_simple(shape, 0.03, 69441337420);
 		let prepared = coloring.prepare();
-		let mut texture = RgbImage::new(texture_size.width_u32(), texture_size.height_u32());
-		fdsm::generate::generate_msdf(&prepared, range as f64, &mut texture);
-		fdsm::render::correct_sign_msdf(&mut texture, &prepared, FillRule::Nonzero);
+		let mut texture = Rgba32FImage::new(texture_size.width_u32(), texture_size.height_u32());
+		fdsm::generate::generate_mtsdf(&prepared, range as f64, &mut texture);
+		fdsm::render::correct_sign_mtsdf(&mut texture, &prepared, FillRule::Nonzero);
+		let mut config = fdsm::correct_error::ErrorCorrectionConfig::default();
+		config.mode = fdsm::correct_error::ErrorCorrectionMode::EdgePriority;
+		config.distance_check = fdsm::correct_error::DistanceCheckMode::AtEdge;
+		fdsm::correct_error::correct_error_mtsdf(&mut texture, &coloring, &prepared, range as f64, &config);
 		texture
 	}
 	pub fn create_text_bounding_size(

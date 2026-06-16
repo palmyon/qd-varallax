@@ -5,7 +5,6 @@ use crate::types::{color::VxColor, geometry::{VxSize, VxVec2}};
 pub struct VxTexVertex {
 	position: [f32; 3],
 	color: [f32; 4],
-	/// テクスチャ座標(u, v) 0.0 ~ 1.0
 	tex_coords: [f32; 2],
 	texture_index: i32,
 }
@@ -152,15 +151,21 @@ pub struct VxSdfVertex {
 	radius: f32,
 	uv: [f32; 2],
 	size: [f32 ; 2],
+	outline_color: [f32; 4],
+	outline_width: f32,
+	blur_radius: f32,
 }
 
 impl VxSdfVertex {
-	pub const ATTRS: [wgpu::VertexAttribute; 5] = wgpu::vertex_attr_array![
+	pub const ATTRS: [wgpu::VertexAttribute; 8] = wgpu::vertex_attr_array![
 		0 => Float32x3,
 		1 => Float32x4,
 		2 => Float32,
 		3 => Float32x2,
 		4 => Float32x2,
+		5 => Float32x4,
+		6 => Float32,
+		7 => Float32,
 	];
 	pub const VERTEXBUFFERLAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
 		array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
@@ -169,13 +174,25 @@ impl VxSdfVertex {
 	};
 
 	#[inline]
-	pub fn new(position: [f32; 3], color: VxColor, radius: f32, uv: [f32; 2], rect_pix_size: VxSize) -> Self {
+	pub fn new(
+		position: [f32; 3],
+		color: VxColor,
+		radius: f32,
+		uv: [f32; 2],
+		rect_pix_size: VxSize,
+		outline_color: VxColor,
+		outline_width: f32,
+		blur_radius: f32,
+	) -> Self {
 		Self {
 			position,
 			color: color.to_array_with_alpha(),
 			radius,
 			uv	,
 			size: rect_pix_size.to_array(),
+			outline_color: outline_color.to_array_with_alpha(),
+			outline_width,
+			blur_radius,
 		}
 	}
 

@@ -6,7 +6,7 @@ struct Projection {
 var<uniform> projection: Projection;
 
 @group(1) @binding(0) var t_diffuse: binding_array<texture_2d<f32>>;
-@group(1) @binding(1) var msdfSampler: sampler;
+@group(1) @binding(1) var mtsdf_sampler: sampler;
 
 struct VertexInput {
     @location(0) pos: vec3<f32>,
@@ -36,26 +36,15 @@ fn median(r: f32, g: f32, b: f32) -> f32 {
     return max(min(r, g), min(max(r, g), b));
 }
 
-@fragment
-fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-    let msd = textureSample(t_diffuse[in.texture_index], msdfSampler, in.tex_coords).rgb;
-    
-    let sd = median(msd.r, msd.g, msd.b);
-    
-    let pxRange = 10.0;
-    
-    let tex_size = vec2f(textureDimensions(t_diffuse[in.texture_index]));
-    let dx = dpdx(in.tex_coords * tex_size);
-    let dy = dpdy(in.tex_coords * tex_size);
-    let to_pixels = 1.0 / inverseInversesqrt(dot(dx, dx) + dot(dy, dy));
-    
-    let sigDist = (sd - 0.5) * pxRange * to_pixels;
-    
-    let opacity = clamp(sigDist + 0.5, 0.0, 1.0);
-    
-    return vec4f(in.color.rgb, in.color.a * opacity);
-}
 
-fn inverseInversesqrt(x: f32) -> f32 {
-    return sqrt(x);
+@fragment
+fn fs_main(out: VertexOutput) -> @location(0) vec4f {
+	let mtsdf = textureSample(t_diffuse[out.texture_index], mtsdf_sampler, out.tex_coords);
+	let msdf_sd = median(mtsdf.r, mtsdf.g, mtsdf.b);
+
+	let sd = clamp(msdf_sd - mtsdf.a, -0.5, 0.5) + mtsdf.a;
+	let boost = pow((sd - 0.05) * 2.5, 15.0);
+	let clamp_boost = clamp(boost, 0.0, 1.0);
+
+    return vec4f(out.color.rgb, out.color.a * clamp_boost);
 }

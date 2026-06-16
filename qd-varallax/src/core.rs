@@ -1,7 +1,7 @@
 pub mod application;
 pub mod bvh;
 pub mod glyph;
-pub mod msdf;
+pub mod mtsdf;
 pub mod gpu_resource;
 pub mod renderer;
 pub mod resource;

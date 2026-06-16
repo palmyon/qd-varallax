@@ -1,10 +1,21 @@
 use crate::{
-	abstractions::abstract_layouts::VxAlignment, core::{gpu_resource::VxGpuResource, systems::{VxFontSystem, VxTextureSystem}, vx_event::{
-		VxEventResult,
-		VxKeyEvent,
-		VxMouseEvent
-	}}, painter::painter::VxPainter, types::{
-		genelational_vector::VxGenIndex, geometry::{
+	abstractions::abstract_layouts::VxAlignment,
+	core::{
+		gpu_resource::VxGpuResource,
+		systems::{
+			VxFontSystem,
+			VxTextureSystem
+		},
+		vx_event::{
+			VxEventResult,
+			VxKeyEvent,
+			VxMouseEvent
+		}
+	},
+	painter::painter::VxPainter,
+	types::{
+		genelational_vector::VxGenIndex,
+		geometry::{
 			VxRect,
 			VxSize,
 			VxVec2
@@ -13,7 +24,8 @@ use crate::{
 			VxAngle,
 			VxTransform
 		}
-	}, vx_signal
+	},
+	vx_signal
 };
 
 

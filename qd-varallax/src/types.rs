@@ -1,4 +1,5 @@
 pub mod color;
+pub mod style;
 pub mod geometry;
 pub mod vertex;
 pub mod genelational_vector;

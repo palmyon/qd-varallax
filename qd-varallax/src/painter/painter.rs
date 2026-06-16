@@ -1,7 +1,5 @@
 use crate::{
-	core::{
-		glyph::VxFont,
-	},
+	core::glyph::VxFont,
 	painter::tessellate::{
 		self
 	},
@@ -9,8 +7,8 @@ use crate::{
 		color::VxColor,
 		geometry::{
 			VxRect,
-			VxRectR
 		},
+		style::VxSdfStyle,
 		texture::VxTexture,
 		transform::{
 			VxMatrix3x3,
@@ -42,7 +40,7 @@ impl VxDrawTextData {
 			z_value: VxVertexZValue::Disable
 		}
 	}
-	pub fn z_value(&mut self) -> VxVertexZValue { std::mem::take(&mut self.z_value) }
+	pub fn z_value(&self) -> i32 { self.z_value.z_value() }
 	pub fn is_z_enable(&self) -> bool { self.z_value != VxVertexZValue::Disable }
 	pub fn set_z_value(&mut self, z: i32) {
 		self.z_value = VxVertexZValue::Enable { z };
@@ -162,14 +160,14 @@ impl VxPainter {
 	}
 
 	pub fn draw_rect(&mut self, rect: VxRect, brush: VxColor) {
-		let (mut verts, index) = tessellate::tessellate_rect(&rect, &brush);
+		let (mut verts, index) = tessellate::tessellate_rect(rect, brush);
 		self.apply_current_transform(&mut verts);
 		
 		self.vertices.push(VxVertexContainer::new(verts.to_vec(), index.to_vec()));
 	}
 
-	pub fn draw_sdf_rect(&mut self, rect: VxRectR, brush: VxColor) {
-		let (mut verts, index) = tessellate::tessellate_sdf_rect(&rect, &brush);
+	pub fn draw_sdf_rect(&mut self, sdf_style: VxSdfStyle) {
+		let (mut verts, index) = tessellate::tessellate_sdf_rect(sdf_style);
 		self.apply_current_transform_sdf(&mut verts);
 
 		self.sdf_verts.push(VxVertexContainer::new(verts.to_vec(), index.to_vec()));

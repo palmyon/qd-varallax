@@ -161,12 +161,8 @@ impl VxWindowStats {
 
         // 頂点のみデータを描画
         self.renderer.set_vertex_vertices(&res.gpu, verts);
-
         self.renderer.set_sdf_vertices(&res.gpu, sdf_verts);
-
-        // テクスチャデータを描画
         self.renderer.set_texture_vertices(&res.gpu, tex_verts);
-
         self.renderer.set_text_vertices(&res.gpu, text_verts);
 
         self.renderer.render(res, &self.surface);

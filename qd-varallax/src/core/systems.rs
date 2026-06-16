@@ -16,9 +16,9 @@ use crate::{
 			VxGpuResource,
 			VxGpuTextureData
 		},
-		msdf::{
+		mtsdf::{
 			VxFontDataGenerator,
-			VxMsdfGenerator
+			VxMtsdfGenerator
 		},
 	},
 	painter::{
@@ -233,7 +233,7 @@ impl VxFontSystem {
 			&mut self.context,
 			font_data,
 			msdf_size,
-			VxMsdfGenerator::RANGE,
+			VxMtsdfGenerator::RANGE,
 			&missings,
 		);
 
@@ -284,7 +284,7 @@ impl VxFontSystem {
 				texture.as_image_copy(),
 				VxImage::new(
 					VxSize::from_u32(Self::ATLAS_SIZE, Self::ATLAS_SIZE),
-					VxColorU8::from_hex(0x0000FF),
+					VxColorU8::from_hex(0x000000).with_alpha(0),
 				)
 				.as_raw_rgba8(),
 				wgpu::TexelCopyBufferLayout {
@@ -334,10 +334,10 @@ impl VxFontSystem {
 		advance: f32,
 	) -> (VxGlyphInfo, VxImage) {
 		// MSDFを生成
-		let bearing_x = VxFontDataGenerator::create_bearing_x(bounding_rect, VxMsdfGenerator::RANGE);
-		let bearing_y = VxFontDataGenerator::create_bearing_y(bounding_rect, VxMsdfGenerator::RANGE);
+		let bearing_x = VxFontDataGenerator::create_bearing_x(bounding_rect, VxMtsdfGenerator::RANGE);
+		let bearing_y = VxFontDataGenerator::create_bearing_y(bounding_rect, VxMtsdfGenerator::RANGE);
 
-		let msdf_texture = VxMsdfGenerator::create_msdf_from_shape(bounding_rect, shape);
+		let msdf_texture = VxMtsdfGenerator::create_msdf_from_shape(bounding_rect, shape);
 		let (w, h) = msdf_texture.size().to_tuple();
 
 		let atlas_size = Self::ATLAS_SIZE as f32;
@@ -356,7 +356,7 @@ impl VxFontSystem {
 			bearing_x,
 			bearing_y,
 			advance,
-			VxMsdfGenerator::RANGE as f32,
+			VxMtsdfGenerator::RANGE as f32,
 		);
 		(glyph_info, msdf_texture)
 	}
@@ -471,7 +471,10 @@ impl VxFontSystem {
 					v.set_position_vec2(pos);
 				});
 
-				all_array.push(VxVertexContainer::new(verts.to_vec(), indices.to_vec()));
+				let mut container = VxVertexContainer::new(verts.to_vec(), indices.to_vec());
+				container.set_z_value(cmd.z_value());
+
+				all_array.push(container);
 
 				cursor.set_x(cursor.x() + (glyph_info.advance * scale));
 			}

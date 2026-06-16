@@ -18,7 +18,7 @@ use crate::{
 		VxRect,
 		VxRectR,
 		VxVec2
-	}},
+	}, style::VxSdfStyle},
 	vx_widget_signals,
 	widgets::{text::VxTextWidget, theme::{
 		VxTheme,
@@ -123,7 +123,12 @@ impl VxWidget for VxButtonWidget {
 		};
 
 		painter.push_tranform(self.transform());
-		painter.draw_sdf_rect(self.rect, draw_color);
+		painter.draw_sdf_rect(VxSdfStyle::new(
+			self.rect, draw_color,
+			VxColor::from_hex(0x00D4FF),
+			1.5,
+			0.0
+		));
 		painter.pop_transform();
 	}
 
@@ -183,7 +188,7 @@ impl VxButtonWidget {
 		style: VxButtonStyle,
 		parent: Option<VxWidgetId>
 	) -> Self {
-		let mut t = VxTextWidget::new(text, VxFont::from_family_str("kokumr", 20.0), VxColor::from_hex(0xFFFFFF), None);
+		let mut t = VxTextWidget::new(text, style.font(), VxColor::from_hex(0xFFFFFF), None);
 		t.stats_mut().set_alignment(VxAlignment::Center);
 		let mut stats = VxWidgetStats::new(parent);
 		stats.add_child_widget(t);
