@@ -4,7 +4,7 @@ use crate::types::{color::VxColor, geometry::{VxSize, VxVec2}};
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct VxTexVertex {
 	position: [f32; 3],
-	color: [f32; 4],
+	color: [u8; 4],
 	tex_coords: [f32; 2],
 	texture_index: i32,
 }
@@ -12,12 +12,12 @@ pub struct VxTexVertex {
 impl VxTexVertex {
 	pub const ATTRS: [wgpu::VertexAttribute; 4] = wgpu::vertex_attr_array![
 		0 => Float32x3, // pos
-		1 => Float32x4, // color
+		1 => Unorm8x4, // color
 		2 => Float32x2, // texcoord
 		3 => Sint32, // tex_index
 	];
 	pub const VERTEXBUFFERLAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
-		array_stride: std::mem::size_of::<VxTexVertex>() as wgpu::BufferAddress,
+		array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
 		step_mode: wgpu::VertexStepMode::Vertex,
 		attributes: &Self::ATTRS,
 	};
@@ -26,9 +26,112 @@ impl VxTexVertex {
 	pub fn new(position: [f32; 3], color: VxColor, tex_coords: [f32; 2], tex_index: i32) -> Self {
 		Self {
 			position,
-			color: color.to_array_with_alpha(),
+			color: color.to_array_with_alpha_u8(),
 			tex_coords,
 			texture_index: tex_index,
+		}
+	}
+
+	#[inline]
+	pub fn position(&self) -> [f32; 3] { self.position }
+	#[inline]
+	pub fn x(self) -> f32 { self.position[0] }
+	#[inline]
+	pub fn y(self) -> f32 { self.position[1] }
+	#[inline]
+	pub fn z(self) -> f32 { self.position[2] }
+
+	#[inline]
+	pub fn to_vec2(&self) -> VxVec2 {
+		VxVec2::new(self.x(), self.y())
+	}
+
+	#[inline]
+	pub fn set_x(&mut self, x: f32) {
+		self.position[0] = x;
+	}
+	#[inline]
+	pub fn set_y(&mut self, y: f32) {
+		self.position[1] = y;
+	}
+	#[inline]
+	pub fn set_z(&mut self, z: f32) {
+		self.position[2] = z;
+	}
+	#[inline]
+	pub fn set_position(&mut self, position: [f32; 3]) {
+		self.position = position;
+	}
+	#[inline]
+	pub fn set_position_vec2(&mut self, new_pos: VxVec2) {
+		self.set_x(new_pos.x());
+		self.set_y(new_pos.y());
+	}
+	#[inline]
+	pub fn set_tex_coord(&mut self, u: f32, v: f32) {
+		self.tex_coords[0] = u;
+		self.tex_coords[1] = v;
+	}
+	#[inline]
+	pub fn set_texture_index(&mut self, id: i32) {
+		self.texture_index = id;
+	}
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct VxTextVertex {
+	position: [f32; 3],
+	color: [u8; 4],
+	tex_coords: [f32; 2],
+	texture_index: i32,
+	outline_color: [u8; 4],
+	outline_width: f32,
+	blur_radius: f32,
+	original_size: [f32; 2],
+	uv_center: [f32; 2],
+}
+
+impl VxTextVertex {
+	pub const ATTRS: [wgpu::VertexAttribute; 9] = wgpu::vertex_attr_array![
+		0 => Float32x3, // pos
+		1 => Unorm8x4, // color
+		2 => Float32x2, // texcoord
+		3 => Sint32, // tex_index
+		4 => Unorm8x4, // outline_color
+		5 => Float32, // outline_width
+		6 => Float32, // blur_radius
+		7 => Float32x2, // original_size
+		8 => Float32x2,
+	];
+	pub const VERTEXBUFFERLAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
+		array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
+		step_mode: wgpu::VertexStepMode::Vertex,
+		attributes: &Self::ATTRS,
+	};
+
+	#[inline]
+	pub fn new(
+		position: [f32; 3],
+		color: VxColor,
+		tex_coords: [f32; 2],
+		tex_index: i32,
+		outline_color: VxColor,
+		outline_width: f32,
+		blur_radius: f32,
+		original_size: VxSize,
+		uv_center: VxVec2,
+	) -> Self {
+		Self {
+			position,
+			color: color.to_array_with_alpha_u8(),
+			tex_coords,
+			texture_index: tex_index,
+			outline_color: outline_color.to_array_with_alpha_u8(),
+			outline_width,
+			blur_radius,
+			original_size: original_size.to_array(),
+			uv_center: uv_center.to_array(),
 		}
 	}
 
@@ -83,16 +186,16 @@ impl VxTexVertex {
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct VxVertex {
 	position: [f32; 3],
-	color: [f32; 4],
+	color: [u8; 4],
 }
 
 impl VxVertex {
 	pub const ATTRS: [wgpu::VertexAttribute; 2] = wgpu::vertex_attr_array![
 		0 => Float32x3, // pos
-		1 => Float32x4, // color
+		1 => Unorm8x4, // color
 	];
 	pub const VERTEXBUFFERLAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
-		array_stride: std::mem::size_of::<VxVertex>() as wgpu::BufferAddress,
+		array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
 		step_mode: wgpu::VertexStepMode::Vertex,
 		attributes: &Self::ATTRS,
 	};
@@ -101,7 +204,7 @@ impl VxVertex {
 	pub fn new(position: [f32; 3], color: VxColor) -> Self {
 		Self {
 			position,
-			color: color.to_array_with_alpha(),
+			color: color.to_array_with_alpha_u8(),
 		}
 	}
 
@@ -147,11 +250,11 @@ impl VxVertex {
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct VxSdfVertex {
 	position: [f32; 3],
-	color: [f32; 4],
+	color: [u8; 4],
 	radius: f32,
 	uv: [f32; 2],
 	size: [f32 ; 2],
-	outline_color: [f32; 4],
+	outline_color: [u8; 4],
 	outline_width: f32,
 	blur_radius: f32,
 }
@@ -159,11 +262,11 @@ pub struct VxSdfVertex {
 impl VxSdfVertex {
 	pub const ATTRS: [wgpu::VertexAttribute; 8] = wgpu::vertex_attr_array![
 		0 => Float32x3,
-		1 => Float32x4,
+		1 => Unorm8x4,
 		2 => Float32,
 		3 => Float32x2,
 		4 => Float32x2,
-		5 => Float32x4,
+		5 => Unorm8x4,
 		6 => Float32,
 		7 => Float32,
 	];
@@ -186,11 +289,11 @@ impl VxSdfVertex {
 	) -> Self {
 		Self {
 			position,
-			color: color.to_array_with_alpha(),
+			color: color.to_array_with_alpha_u8(),
 			radius,
 			uv	,
 			size: rect_pix_size.to_array(),
-			outline_color: outline_color.to_array_with_alpha(),
+			outline_color: outline_color.to_array_with_alpha_u8(),
 			outline_width,
 			blur_radius,
 		}

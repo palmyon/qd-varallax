@@ -3,15 +3,11 @@ use crate::{
 		gpu_resource::VxGpuResource,
 		resource::VxAppResources
 	},
-	painter::painter::{
-		VxVertexContainer,
-	},
+	painter::painter::VxVertexContainer,
 	types::{
 		transform::VxMatrix4x4,
 		vertex::{
-			VxSdfVertex,
-			VxTexVertex,
-			VxVertex
+			VxSdfVertex, VxTexVertex, VxTextVertex, VxVertex
 		}
 	}
 };
@@ -58,7 +54,7 @@ impl VxRenderModule {
 		let index_buffer = gpu.device.create_buffer(
 			&wgpu::BufferDescriptor {
 				label: Some("Vx Index Buffer"),
-				size: std::mem::size_of::<[u16; 10000]>() as u64,
+				size: std::mem::size_of::<[u32; 100]>() as u64,
 				usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
 				mapped_at_creation: false,
 			}
@@ -244,7 +240,7 @@ impl VxRenderer {
 			include_str!("shader/vertex_shader.wgsl"),
 			&[],
 			&[VxVertex::VERTEXBUFFERLAYOUT],
-			(std::mem::size_of::<VxVertex>() * 10000) as u64
+			(std::mem::size_of::<VxVertex>() * 100) as u64
 		);
 
 		let sdf_module = VxRenderModule::new(
@@ -254,7 +250,7 @@ impl VxRenderer {
 			include_str!("shader/sdf_shader.wgsl"), 
 			&[], 
 			&[VxSdfVertex::VERTEXBUFFERLAYOUT], 
-			(std::mem::size_of::<VxSdfVertex>() * 10000) as u64,
+			(std::mem::size_of::<VxSdfVertex>() * 100) as u64,
 		);
 
 		let texture_module = VxRenderModule::new(
@@ -264,7 +260,7 @@ impl VxRenderer {
 			include_str!("shader/texture_shader.wgsl"),
 			&[&gpu.bind_group_layout],
 			&[VxTexVertex::VERTEXBUFFERLAYOUT],
-			(std::mem::size_of::<VxVertex>() * 10000) as u64
+			(std::mem::size_of::<VxVertex>() * 100) as u64
 		);
 
 		let text_module = VxRenderModule::new(
@@ -273,8 +269,8 @@ impl VxRenderer {
 			VxModuleId::TextModule,
 			include_str!("shader/text_shader.wgsl"), 
 			&[&gpu.bind_group_layout], 
-		&[VxTexVertex::VERTEXBUFFERLAYOUT],
-		(std::mem::size_of::<VxVertex>() * 10000) as u64
+		&[VxTextVertex::VERTEXBUFFERLAYOUT],
+		(std::mem::size_of::<VxTextVertex>() * 100) as u64
 		);
 
 		Self {
@@ -372,7 +368,7 @@ impl VxRenderer {
 		}
 
 		render_pass.set_vertex_buffer(0, module.vertex_buffer.slice(..));
-		render_pass.set_index_buffer(module.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+		render_pass.set_index_buffer(module.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
 		render_pass.draw_indexed(line.start()..line.start() + line.count(), 0, 0..1);
 	}
 
@@ -404,7 +400,7 @@ impl VxRenderer {
 	pub fn set_text_vertices(
 		&mut self,
 		gpu: &VxGpuResource,
-		vertices: Vec<VxVertexContainer<VxTexVertex>>,
+		vertices: Vec<VxVertexContainer<VxTextVertex>>,
 	) {
 		Self::write_data_to_buffer(gpu, &mut self.text_module, vertices, &mut self.draw_lines);
 	}
@@ -427,16 +423,16 @@ impl VxRenderer {
 		}
 
 		let mut all_vertices: Vec<T> = Vec::with_capacity(total_vert_len);
-		let mut all_index: Vec<u16> = Vec::with_capacity(total_index_len);
+		let mut all_index: Vec<u32> = Vec::with_capacity(total_index_len);
 		draw_lines.reserve(vertex_container.len());
 
-		let mut current_vertex_offset = 0u16;
+		let mut current_vertex_offset = 0u32;
 
 		vertex_container.sort_by_key(|c| c.z_value());
 
 		for mut container in vertex_container.drain(..) {
 			let mut verts = container.verts();
-			let len = verts.len() as u16;
+			let len = verts.len() as u32;
 			let before_index_len = all_index.len() as u32;
 			all_vertices.append(&mut verts);
 
@@ -462,7 +458,7 @@ impl VxRenderer {
 			module.update_vertex_buffer(&gpu, vertex_data_size);
 		}
 
-		let index_data_size = (all_index.len() * 2) as u64;
+		let index_data_size = (all_index.len() * 4) as u64;
 		if Self::is_over_index_buffer_size(&module, index_data_size) {
 			module.update_index_buffer(&gpu, index_data_size);
 		}

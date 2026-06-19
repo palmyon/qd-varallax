@@ -57,7 +57,7 @@ impl VxMtsdfGenResult {
 pub struct VxMtsdfGenerator;
 
 impl VxMtsdfGenerator {
-	pub const RANGE: f32 = 4.0;
+	pub const RANGE: f32 = 8.0;
 
 	pub fn create_msdf_from_outline(outline: Outline) -> VxImage {
 		let bounding_rect = VxFontDataGenerator::create_bounding_rect(&outline);

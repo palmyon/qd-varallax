@@ -28,16 +28,30 @@ pub(crate) struct VxDrawTextData {
 	pub(crate) color: VxColor,
 	pub(crate) matrix: VxMatrix3x3,
 	pub(crate) z_value: VxVertexZValue,
+	pub(crate) outline_color: VxColor,
+	pub(crate) outline_width: f32,
+	pub(crate) blur_radius: f32,
 }
 
 impl VxDrawTextData {
-	pub(crate) fn new(text: impl Into<String>, font: VxFont, color: VxColor, matrix: VxMatrix3x3) -> Self {
+	pub(crate) fn new(
+		text: impl Into<String>,
+		font: VxFont,
+		color: VxColor,
+		matrix: VxMatrix3x3,
+		outline_color: VxColor,
+		outline_width: f32,
+		blur_radius: f32,
+	) -> Self {
 		Self {
 			text: text.into(),
 			font,
 			color,
 			matrix,
-			z_value: VxVertexZValue::Disable
+			z_value: VxVertexZValue::Disable,
+			outline_color,
+			outline_width,
+			blur_radius,
 		}
 	}
 	pub fn z_value(&self) -> i32 { self.z_value.z_value() }
@@ -64,17 +78,17 @@ impl VxVertexZValue {
 
 pub(crate) struct VxVertexContainer<T> {
 	pub(crate) verts: Vec<T>,
-	pub(crate) index: Vec<u16>,
+	pub(crate) index: Vec<u32>,
 	z_value: VxVertexZValue,
 }
 impl<T> VxVertexContainer<T> {
-	pub fn new(verts: Vec<T>, index: Vec<u16>) -> Self {
+	pub fn new(verts: Vec<T>, index: Vec<u32>) -> Self {
 		Self { verts, index, z_value: VxVertexZValue::Disable }
 	}
 	pub fn verts(&mut self) -> Vec<T> {
 		std::mem::take(&mut self.verts)
 	}
-	pub fn index(&mut self) -> Vec<u16> {
+	pub fn index(&mut self) -> Vec<u32> {
 		std::mem::take(&mut self.index)
 	}
 	pub fn z_value(&self) -> i32 { self.z_value.z_value() }
@@ -189,8 +203,18 @@ impl VxPainter {
 		);
 	}
 
-	pub fn draw_text(&mut self, text: &str, font: VxFont, color: VxColor) {
+	pub fn draw_text(
+		&mut self,
+		text: &str,
+		font: VxFont,
+		color: VxColor,
+		outline_color: VxColor,
+		outline_width: f32,
+		blur_radius: f32,
+	) {
 		let matrix = *self.current_tranform();
-		self.text_data.push(VxDrawTextData::new(text, font, color, matrix));
+		self.text_data.push(VxDrawTextData::new(
+			text, font, color, matrix, outline_color, outline_width, blur_radius
+		));
 	}
 }

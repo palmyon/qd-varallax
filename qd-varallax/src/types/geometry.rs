@@ -176,7 +176,8 @@ impl VxVec2 {
 #[derive(
 	Clone, Copy, PartialEq, PartialOrd, Debug, Default,
 	Add, Sub, Mul, Div,
-	AddAssign, SubAssign, MulAssign, DivAssign
+	AddAssign, SubAssign, MulAssign, DivAssign,
+	bytemuck::Pod, bytemuck::Zeroable,
 )]
 #[mul(forward)]
 #[div(forward)]

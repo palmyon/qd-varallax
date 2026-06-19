@@ -35,7 +35,14 @@ impl VxWidget for VxTextWidget {
 	}
 	fn paint(&mut self, painter: &mut crate::painter::painter::VxPainter) {
 		painter.push_tranform(self.transform());
-		painter.draw_text(&self.text, self.font, self.color);
+		painter.draw_text(
+			&self.text,
+			self.font,
+			self.color,
+			VxColor::from_hex(0x00D4FF),
+			0.0,
+			0.0
+		);
 		painter.pop_transform();
 	}
 	fn create_bounding_rect_event(&mut self, system: &crate::core::systems::VxFontSystem) {

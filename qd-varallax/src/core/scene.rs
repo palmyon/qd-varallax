@@ -94,7 +94,9 @@ impl VxScene {
 				bounding_rect.top_center() - rect.top_center()
 			}
 			VxAlignment::Center => {
-				bounding_rect.center() - rect.center()
+				let x = bounding_rect.center().x() - rect.half_width();
+				let y = bounding_rect.center().y() - rect.half_height();
+				VxVec2::new(x, y)
 			}
 			VxAlignment::BottomCenter => {
 				bounding_rect.bottom_center() - rect.bottom_center()

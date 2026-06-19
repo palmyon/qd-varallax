@@ -44,7 +44,7 @@ use crate::{
 			VxImage,
 			VxTexture
 		},
-		vertex::VxTexVertex,
+		vertex::{VxTexVertex, VxTextVertex},
 	},
 };
 
@@ -427,7 +427,7 @@ impl VxFontSystem {
 		&mut self,
 		gpu: &VxGpuResource,
 		mut data: Vec<VxDrawTextData>,
-	) -> Vec<VxVertexContainer<VxTexVertex>> {
+	) -> Vec<VxVertexContainer<VxTextVertex>> {
 		let total_bytes: usize = data.iter().map(|cmd| cmd.text.len()).sum();
 		let mut all_array = Vec::with_capacity(total_bytes);
 
@@ -442,6 +442,7 @@ impl VxFontSystem {
 			);
 			let line_height = vertical_metrics.create_line_height();
 			let scale = font_size / Self::MSDF_SIZE;
+			let margin = (cmd.outline_width + cmd.blur_radius) * 2.0;
 
 			let mut cursor = VxVec2::default();
 
@@ -450,7 +451,9 @@ impl VxFontSystem {
 
 				if ch == '\n' {
 					cursor.set_x(0.0);
-					cursor.set_y(cursor.y() + (line_height * scale));
+					cursor.set_y(
+						cursor.y() + (line_height * scale) + margin
+					);
 					continue;
 				}
 
@@ -459,11 +462,14 @@ impl VxFontSystem {
 				let w = glyph_info.atlas_rect.width() * scale;
 				let h = glyph_info.atlas_rect.height() * scale;
 
-				let (mut verts, indices) = tessellate::tessellate_texture(
+				let (mut verts, indices) = tessellate::tessellate_text(
 					VxRect::new(x, y, w, h),
 					cmd.color,
 					glyph_info.uv_rect,
 					atlas_and_texture_id.index as i32,
+					cmd.outline_color,
+					cmd.outline_width,
+					cmd.blur_radius,
 				);
 
 				verts.iter_mut().for_each(|v| {
@@ -476,7 +482,9 @@ impl VxFontSystem {
 
 				all_array.push(container);
 
-				cursor.set_x(cursor.x() + (glyph_info.advance * scale));
+				cursor.set_x(
+					cursor.x() + (glyph_info.advance * scale) + margin
+				);
 			}
 		}
 

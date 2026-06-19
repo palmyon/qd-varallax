@@ -27,11 +27,6 @@ struct VertexOutput {
 	@location(6) blur_radius: f32,
 }
 
-fn sd_rounded_box(p: vec2f, b: vec2f, r: f32) -> f32 {
-	let q = abs(p) - b + r;
-	return length(max(q, vec2f(0.0))) + min(max(q.x, q.y), 0.0) - r;
-}
-
 @vertex
 fn vs_main(in: VertexInput) -> VertexOutput {
 	var out: VertexOutput;
@@ -45,6 +40,12 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 	out.blur_radius = in.blur_radius;
 	return out;
 }
+
+fn sd_rounded_box(p: vec2f, b: vec2f, r: f32) -> f32 {
+	let q = abs(p) - b + r;
+	return length(max(q, vec2f(0.0))) + min(max(q.x, q.y), 0.0) - r;
+}
+
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4f {

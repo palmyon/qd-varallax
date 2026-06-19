@@ -8,5 +8,4 @@ pub mod resource;
 pub mod scene;
 pub mod signal;
 pub mod systems;
-pub mod tex_registry;
 pub mod vx_event;

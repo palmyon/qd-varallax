@@ -47,7 +47,7 @@ impl VxWindow for MainWindow {
 
 		let mut button = VxButtonWidget::new(
 			VxRectR::new(VxRect::from_i32(0, 0, 250, 50), 10.0),
-			"MyNameIs\nSoumeinatenmonnnin.",
+			"本人確認できず",
 			VxButtonStyle::new(VxThemeMode::DarkMode, VxFont::from_family_str("kokumr", 128.0)),
 			None
 		);
@@ -56,12 +56,25 @@ impl VxWindow for MainWindow {
 
 		let mut button = VxButtonWidget::new(
 			VxRectR::new(VxRect::from_i32(0, 0, 250, 50), 10.0),
-			"はいこんにちは。聡明な者、皆涙す。",
+			"鬱激ぐおｗ",
 			VxButtonStyle::new(VxThemeMode::DarkMode, VxFont::from_family_str("kokumr", 32.0)),
 			None
 		);
 		button.set_pos(VxVec2::from_i32(500, 550));
 		self.add_widget(button);
+
+		// for i in 0..1920 {
+		// 	for j in 0..12 {
+		// 		let mut rect = VxRectWidget::new(
+		// 			VxRect::from_i32(0, 0, 1, 100),
+		// 			VxColor::from_hsv(i as f32 / 1920.0, 1.0, 1.0),
+		// 			None
+		// 		);
+		// 		rect.set_pos(VxVec2::from_i32(i, j * 100));
+		// 		rect.set_z_value(-1);
+		// 		self.add_widget(rect);
+		// 	}
+		// }
 	}
 }
 

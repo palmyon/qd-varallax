@@ -124,10 +124,11 @@ impl VxWidget for VxButtonWidget {
 
 		painter.push_tranform(self.transform());
 		painter.draw_sdf_rect(VxSdfStyle::new(
-			self.rect, draw_color,
+			self.rect,
+			draw_color,
 			VxColor::from_hex(0x00D4FF),
-			1.5,
-			0.0
+			10.0,
+			15.0
 		));
 		painter.pop_transform();
 	}
@@ -188,7 +189,7 @@ impl VxButtonWidget {
 		style: VxButtonStyle,
 		parent: Option<VxWidgetId>
 	) -> Self {
-		let mut t = VxTextWidget::new(text, style.font(), VxColor::from_hex(0xFFFFFF), None);
+		let mut t = VxTextWidget::new(text, style.font(), VxColor::from_hex(0x000000), None);
 		t.stats_mut().set_alignment(VxAlignment::Center);
 		let mut stats = VxWidgetStats::new(parent);
 		stats.add_child_widget(t);
