@@ -47,34 +47,34 @@ impl VxWindow for MainWindow {
 
 		let mut button = VxButtonWidget::new(
 			VxRectR::new(VxRect::from_i32(0, 0, 250, 50), 10.0),
-			"本人確認できず",
-			VxButtonStyle::new(VxThemeMode::DarkMode, VxFont::from_family_str("kokumr", 128.0)),
+			"Clickable",
+			VxButtonStyle::new(VxThemeMode::DarkMode, VxFont::from_family_str("kokumr", 32.0)),
 			None
 		);
 		button.set_pos(VxVec2::from_i32(500, 350));
 		self.add_widget(button);
 
-		let mut button = VxButtonWidget::new(
-			VxRectR::new(VxRect::from_i32(0, 0, 250, 50), 10.0),
-			"鬱激ぐおｗ",
-			VxButtonStyle::new(VxThemeMode::DarkMode, VxFont::from_family_str("kokumr", 32.0)),
-			None
+		let mut text = VxTextWidget::new(
+			"日本語も表示可能です。\n見てもらえばわかる通り、ボタン上のテキストの配置が\nおかしいですが、気にしてはいけない。",
+			VxFont::from_family_str("kokumr", 32.0),
+			VxColor::from_hex(0x000000),
+			None,
 		);
-		button.set_pos(VxVec2::from_i32(500, 550));
-		self.add_widget(button);
+		text.set_pos(VxVec2::from_i32(750, 340));
+		self.add_widget(text);
 
-		// for i in 0..1920 {
-		// 	for j in 0..12 {
-		// 		let mut rect = VxRectWidget::new(
-		// 			VxRect::from_i32(0, 0, 1, 100),
-		// 			VxColor::from_hsv(i as f32 / 1920.0, 1.0, 1.0),
-		// 			None
-		// 		);
-		// 		rect.set_pos(VxVec2::from_i32(i, j * 100));
-		// 		rect.set_z_value(-1);
-		// 		self.add_widget(rect);
-		// 	}
-		// }
+		for i in 0..1920 {
+			for j in 0..12 {
+				let mut rect = VxRectWidget::new(
+					VxRect::from_i32(0, 0, 1, 100),
+					VxColor::from_hsv(i as f32 / 1920.0, 1.0, 1.0),
+					None
+				);
+				rect.set_pos(VxVec2::from_i32(i, j * 100));
+				rect.set_z_value(-1);
+				self.add_widget(rect);
+			}
+		}
 	}
 }
 

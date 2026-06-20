@@ -99,13 +99,12 @@ pub fn tessellate_text(
 	outline_width: f32,
 	blur_radius: f32,
 ) -> ([VxTextVertex; 4], [u32; 6]) {
-	let margin = outline_width + blur_radius;
-	let margin_double = margin * 2.0;
-	let x = rect.x() - margin;
-	let y = rect.y() - margin;
-	let w = rect.width() + margin_double;
-	let h = rect.height() + margin_double;
+	let x = rect.x();
+	let y = rect.y();
+	let w = rect.width();
+	let h = rect.height();
 
+	// シェーダーでは何とかできなかったのでごまかし
 	if outline_width == 0.0 && blur_radius == 0.0 {
 		outline_color = color;
 	}
@@ -115,23 +114,23 @@ pub fn tessellate_text(
 			VxTextVertex::new(
 				[x, y, 0.0], color, uv.left_top().to_array(),
 				tex_index, outline_color, outline_width,
-				blur_radius, rect.size(), uv.center()
+				blur_radius,
 			),
 			VxTextVertex::new(
 				[x + w, y, 0.0], color, uv.right_top().to_array(),
 				tex_index, outline_color, outline_width,
-				blur_radius, rect.size(), uv.center()
+				blur_radius,
 			),
 			
 			VxTextVertex::new(
 				[x + w, y + h, 0.0], color, uv.right_bottom().to_array(),
 				tex_index, outline_color, outline_width,
-				blur_radius, rect.size(), uv.center()
+				blur_radius,
 			),
 			VxTextVertex::new(
 				[x, y + h, 0.0], color, uv.left_bottom().to_array(),
 				tex_index, outline_color, outline_width,
-				blur_radius, rect.size(), uv.center()
+				blur_radius,
 			),
 		],
 		[0, 1, 2, 2, 3, 0]

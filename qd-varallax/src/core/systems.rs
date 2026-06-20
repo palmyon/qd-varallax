@@ -442,8 +442,6 @@ impl VxFontSystem {
 			);
 			let line_height = vertical_metrics.create_line_height();
 			let scale = font_size / Self::MSDF_SIZE;
-			let margin = (cmd.outline_width + cmd.blur_radius) * 2.0;
-
 			let mut cursor = VxVec2::default();
 
 			for ch in cmd.text.chars() {
@@ -452,7 +450,7 @@ impl VxFontSystem {
 				if ch == '\n' {
 					cursor.set_x(0.0);
 					cursor.set_y(
-						cursor.y() + (line_height * scale) + margin
+						cursor.y() + (line_height * scale)
 					);
 					continue;
 				}
@@ -483,7 +481,7 @@ impl VxFontSystem {
 				all_array.push(container);
 
 				cursor.set_x(
-					cursor.x() + (glyph_info.advance * scale) + margin
+					cursor.x() + (glyph_info.advance * scale)
 				);
 			}
 		}

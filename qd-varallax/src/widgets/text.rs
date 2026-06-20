@@ -40,8 +40,8 @@ impl VxWidget for VxTextWidget {
 			self.font,
 			self.color,
 			VxColor::from_hex(0x00D4FF),
-			0.0,
-			0.0
+			1.5,
+			1.5
 		);
 		painter.pop_transform();
 	}

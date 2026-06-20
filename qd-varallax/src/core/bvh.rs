@@ -26,7 +26,7 @@ impl VxSpatialIndex {
 		self.tree = Bvh::from_leaves(Default::default(), &aabbs);
 	}
 
-	pub fn udpate_at(&mut self, id: VxWidgetId, aabb: Aabb) {
+	pub fn update_at(&mut self, id: VxWidgetId, aabb: Aabb) {
 		self.tree.insert_or_update_partially(aabb, id.id.index as u32, 0.0);
 	}
 

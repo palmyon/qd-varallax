@@ -88,12 +88,10 @@ pub struct VxTextVertex {
 	outline_color: [u8; 4],
 	outline_width: f32,
 	blur_radius: f32,
-	original_size: [f32; 2],
-	uv_center: [f32; 2],
 }
 
 impl VxTextVertex {
-	pub const ATTRS: [wgpu::VertexAttribute; 9] = wgpu::vertex_attr_array![
+	pub const ATTRS: [wgpu::VertexAttribute; 7] = wgpu::vertex_attr_array![
 		0 => Float32x3, // pos
 		1 => Unorm8x4, // color
 		2 => Float32x2, // texcoord
@@ -101,8 +99,6 @@ impl VxTextVertex {
 		4 => Unorm8x4, // outline_color
 		5 => Float32, // outline_width
 		6 => Float32, // blur_radius
-		7 => Float32x2, // original_size
-		8 => Float32x2,
 	];
 	pub const VERTEXBUFFERLAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
 		array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
@@ -119,8 +115,6 @@ impl VxTextVertex {
 		outline_color: VxColor,
 		outline_width: f32,
 		blur_radius: f32,
-		original_size: VxSize,
-		uv_center: VxVec2,
 	) -> Self {
 		Self {
 			position,
@@ -130,8 +124,6 @@ impl VxTextVertex {
 			outline_color: outline_color.to_array_with_alpha_u8(),
 			outline_width,
 			blur_radius,
-			original_size: original_size.to_array(),
-			uv_center: uv_center.to_array(),
 		}
 	}
 

@@ -18,8 +18,6 @@ struct VertexInput {
 	@location(4) outline_color: vec4f,
 	@location(5) outline_width: f32,
 	@location(6) blur_radius: f32,
-	@location(7) original_size: vec2f,
-	@location(8) uv_center: vec2f,
 }
 
 struct VertexOutput {
@@ -30,8 +28,6 @@ struct VertexOutput {
 	@location(3) outline_color: vec4f,
 	@location(4) outline_width: f32,
 	@location(5) blur_radius: f32,
-	@location(6) @interpolate(flat) original_size: vec2f,
-	@location(7) uv_center: vec2f,
 }
 
 @vertex
@@ -39,17 +35,11 @@ fn vs_main(in: VertexInput) -> VertexOutput {
     var out: VertexOutput;
     out.clip_pos = projection.matrix * vec4f(in.pos, 1.0);
     out.color = in.color;
+	out.tex_coords = in.tex_coords;
     out.texture_index = in.texture_index;
 	out.outline_color = in.outline_color;
 	out.outline_width = in.outline_width;
 	out.blur_radius = in.blur_radius;
-	out.original_size = in.original_size;
-	out.uv_center = in.uv_center;
-
-    let margin = in.outline_width + in.blur_radius;
-    let size = max(in.original_size, vec2f(1e-4));
-    let uv_scale = (size + vec2f(margin * 2.0)) / size;
-    out.tex_coords = in.uv_center + (in.tex_coords - in.uv_center) * uv_scale;
     return out;
 }
 

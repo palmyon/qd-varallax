@@ -140,7 +140,7 @@ impl VxScene {
 			if widget.is_dirty() {
 				dirty = true;
 				widget.set_dirty(false);
-				self.spatial_index.udpate_at(
+				self.spatial_index.update_at(
 					VxWidgetId::new(id),
 					VxUtilConverter::rect_to_aabb(&widget.bounding_rect())
 				);

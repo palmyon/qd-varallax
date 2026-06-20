@@ -40,7 +40,7 @@ is a high-performance GUI library built with `Rust` and `WebGPU`.
 </picture>
 
 ### This screenshots demonstrates:
-* A rainbow background rendered using 1,920
+* A rainbow background rendered using 23,040(1,920x12)
 <a href = "./qd-varallax/src/widgets/vx_widgets.rs">VxRectWidgets.</a>
 * A placed <a href = "./qd-varallax/src/widgets/button.rs">VxButtonWidget</a>.
 * Text rendering rendered by a <a href = "./qd-varallax/src/widgets/text.rs">VxTextWidget</a>.
@@ -187,7 +187,7 @@ I’m thinking of switching the hit detection from a pure WideBVH implementation
 </picture>
 背景のゲーミングカラーは
 <a href = "./qd-varallax/src/widgets/vx_widgets.rs">VxRectWidget</a>
-を1920個使って描画しています。<br>また、
+を23,040(1920x12)個使って描画しています。<br>また、
 <a href = "./qd-varallax/src/widgets/button.rs">VxButtonWidget</a>
 を配置し、
 <a href = "./qd-varallax/src/widgets/text.rs">VxTextWidget</a>
