@@ -7,7 +7,10 @@ use crate::{
 	types::{
 		transform::VxMatrix4x4,
 		vertex::{
-			VxSdfVertex, VxTexVertex, VxTextVertex, VxVertex
+			VxSdfVertex,
+			VxTextureVertex,
+			VxTextVertex,
+			VxVertex
 		}
 	}
 };
@@ -35,7 +38,7 @@ impl VxRenderModule {
 		// create shader module
 		let shader = gpu.device.create_shader_module(
 			wgpu::ShaderModuleDescriptor {
-				label: Some("Vx Shader Module"),
+				label: Some("VxShaderModule"),
 				source: wgpu::ShaderSource::Wgsl(shader.into()),
 			}
 		);
@@ -43,7 +46,7 @@ impl VxRenderModule {
 		// create vertex buffer
 		let vertex_buffer = gpu.device.create_buffer(
 			&wgpu::BufferDescriptor {
-				label: Some("Vx Vertex Buffer"),
+				label: Some("VxVertexBuffer"),
 				size: vertex_buffer_size,
 				usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
 				mapped_at_creation: false,
@@ -53,7 +56,7 @@ impl VxRenderModule {
 		// create index buffer
 		let index_buffer = gpu.device.create_buffer(
 			&wgpu::BufferDescriptor {
-				label: Some("Vx Index Buffer"),
+				label: Some("VxIndexBuffer"),
 				size: std::mem::size_of::<[u32; 100]>() as u64,
 				usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
 				mapped_at_creation: false,
@@ -63,7 +66,7 @@ impl VxRenderModule {
 		// create projection buffer
 		let projection_buffer = gpu.device.create_buffer(
 			&wgpu::BufferDescriptor {
-				label: Some("Vx Projection Buffer"),
+				label: Some("VxProjectionBuffer"),
 				size: std::mem::size_of::<VxMatrix4x4>() as u64,
 				usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
 				mapped_at_creation: false,
@@ -83,14 +86,14 @@ impl VxRenderModule {
 					},
 					count: None,
 				}],
-				label: Some("Vx Projection Bind Group Layout")
+				label: Some("VxProjectionBindGroupLayout")
 			}
 		);
 
 		// create projection bind group
 		let projection_bind_group = gpu.device.create_bind_group(
 			&wgpu::BindGroupDescriptor {
-				label: Some("Vx Projection Bind Group"),
+				label: Some("VxProjectionBindGroup"),
 				layout: &projection_bind_group_layout,
 				entries: &[wgpu::BindGroupEntry {
 					binding: 0,
@@ -105,7 +108,7 @@ impl VxRenderModule {
 		// create pipeline layout including projection bind group layout
 		let pipeline_layout = gpu.device.create_pipeline_layout(
 			&wgpu::PipelineLayoutDescriptor {
-				label: Some("Vx Pipeline Layout"),
+				label: Some("VxPipelineLayout"),
 				bind_group_layouts: &layouts.as_slice(),
 				immediate_size: 0,
 			}
@@ -114,7 +117,7 @@ impl VxRenderModule {
 		// create pipeline
 		let pipeline = gpu.device.create_render_pipeline(
 			&wgpu::RenderPipelineDescriptor {
-				label: Some("Vx Pipeline"),
+				label: Some("VxPipeline"),
 				layout: Some(&pipeline_layout),
 				vertex: wgpu::VertexState {
 					module: &shader,
@@ -154,7 +157,7 @@ impl VxRenderModule {
 	pub fn update_vertex_buffer(&mut self, gpu: &VxGpuResource, target_size: u64) {
 		self.vertex_buffer = gpu.device.create_buffer(
 			&wgpu::BufferDescriptor {
-				label: Some("Vx Vertex Buffer"),
+				label: Some("VxVertexBuffer"),
 				size: (target_size as f64 * 1.5) as u64,
 				usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
 				mapped_at_creation: false,
@@ -165,7 +168,7 @@ impl VxRenderModule {
 	pub fn update_index_buffer(&mut self, gpu: &VxGpuResource, target_size: u64) {
 		self.index_buffer = gpu.device.create_buffer(
 			&wgpu::BufferDescriptor {
-				label: Some("Vx Index Buffer"),
+				label: Some("VxIndexBuffer"),
 				size: (target_size as f64 * 1.5) as u64,
 				usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
 				mapped_at_creation: false,
@@ -244,12 +247,12 @@ impl VxRenderer {
 		);
 
 		let sdf_module = VxRenderModule::new(
-			&gpu, 
-			&surface_config, 
+			&gpu,
+			&surface_config,
 			VxModuleId::SdfModule,
-			include_str!("shader/sdf_shader.wgsl"), 
-			&[], 
-			&[VxSdfVertex::VERTEXBUFFERLAYOUT], 
+			include_str!("shader/sdf_shader.wgsl"),
+			&[],
+			&[VxSdfVertex::VERTEXBUFFERLAYOUT],
 			(std::mem::size_of::<VxSdfVertex>() * 100) as u64,
 		);
 
@@ -259,16 +262,16 @@ impl VxRenderer {
 			VxModuleId::TextureModule,
 			include_str!("shader/texture_shader.wgsl"),
 			&[&gpu.bind_group_layout],
-			&[VxTexVertex::VERTEXBUFFERLAYOUT],
-			(std::mem::size_of::<VxVertex>() * 100) as u64
+			&[VxTextureVertex::VERTEXBUFFERLAYOUT],
+			(std::mem::size_of::<VxTextureVertex>() * 100) as u64
 		);
 
 		let text_module = VxRenderModule::new(
-			&gpu, 
+			&gpu,
 			&surface_config,
 			VxModuleId::TextModule,
-			include_str!("shader/text_shader.wgsl"), 
-			&[&gpu.bind_group_layout], 
+			include_str!("shader/text_shader.wgsl"),
+			&[&gpu.bind_group_layout],
 		&[VxTextVertex::VERTEXBUFFERLAYOUT],
 		(std::mem::size_of::<VxTextVertex>() * 100) as u64
 		);
@@ -292,11 +295,14 @@ impl VxRenderer {
 	pub fn render(&mut self, res: &mut VxAppResources, surface: &wgpu::Surface) {
 		let frame = surface.get_current_texture().expect("VxRenderer> render(): Failed to [get_current_texture]");
 		let view = frame.texture.create_view(&wgpu::TextureViewDescriptor::default());
-		let mut encoder = res.gpu.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("Vx Renderer Encoder") });
+		let mut encoder = res.gpu.device.create_command_encoder(
+			&wgpu::CommandEncoderDescriptor {
+				label: Some("VxRendererEncoder")
+		});
 		{
 			let mut render_pass = encoder.begin_render_pass(
 				&wgpu::RenderPassDescriptor {
-					label: Some("Vx Render Pass"),
+					label: Some("VxRenderPass"),
 					color_attachments: &[Some(
 						wgpu::RenderPassColorAttachment {
 							view: &view,
@@ -392,7 +398,7 @@ impl VxRenderer {
 	pub fn set_texture_vertices(
 		&mut self,
 		gpu: &VxGpuResource,
-		vertices: Vec<VxVertexContainer<VxTexVertex>>,
+		vertices: Vec<VxVertexContainer<VxTextureVertex>>,
 	) {
 		Self::write_data_to_buffer(gpu, &mut self.texture_module, vertices, &mut self.draw_lines);
 	}
@@ -436,8 +442,12 @@ impl VxRenderer {
 			let before_index_len = all_index.len() as u32;
 			all_vertices.append(&mut verts);
 
-			all_index.extend(container.index().iter().map(|&i| i + current_vertex_offset));
-			
+			all_index.extend(
+				container.index()
+					.iter()
+					.map(|&i| i + current_vertex_offset)
+			);
+
 			current_vertex_offset += len;
 
 			let draw_line = VxDrawLine::new(

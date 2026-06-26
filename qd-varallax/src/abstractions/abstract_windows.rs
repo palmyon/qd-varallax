@@ -55,6 +55,7 @@ impl VxWindowAttributes {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum VxWindowLayer {
     AlwaysOnTopLayer,
     AlwaysOnBottomLayer,
@@ -157,7 +158,7 @@ impl VxWindowStats {
         let sdf_verts = std::mem::take(&mut painter.sdf_verts);
         let tex_verts = std::mem::take(&mut painter.tex_verts);
         let text_data = std::mem::take(&mut painter.text_data);
-        let text_verts = res.fonts.generate_text_verices(&res.gpu, text_data);
+        let text_verts = res.fonts.generate_text_vertices(&res.gpu, text_data);
 
         // 頂点のみデータを描画
         self.renderer.set_vertex_vertices(&res.gpu, verts);

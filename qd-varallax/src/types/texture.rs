@@ -3,7 +3,7 @@ use std::path::Path;
 use image::{DynamicImage, ImageReader};
 
 use crate::types::{
-	color::{VxColor, VxColorChannel, VxColorChannelSwap, VxColorU8}, genelational_vector::VxGenIndex, geometry::{
+	color::{VxColor, VxColorChannel, VxColorChannelSwap, VxColorU8}, gen_vector::VxGenIndex, geometry::{
 		VxAspectMode,
 		VxSize,
 		VxVec2

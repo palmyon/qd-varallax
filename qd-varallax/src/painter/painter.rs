@@ -16,7 +16,7 @@ use crate::{
 		},
 		vertex::{
 			VxSdfVertex,
-			VxTexVertex,
+			VxTextureVertex,
 			VxVertex
 		}
 	}
@@ -35,7 +35,7 @@ pub(crate) struct VxDrawTextData {
 
 impl VxDrawTextData {
 	pub(crate) fn new(
-		text: impl Into<String>,
+		text: &str,
 		font: VxFont,
 		color: VxColor,
 		matrix: VxMatrix3x3,
@@ -44,7 +44,7 @@ impl VxDrawTextData {
 		blur_radius: f32,
 	) -> Self {
 		Self {
-			text: text.into(),
+			text: text.to_string(),
 			font,
 			color,
 			matrix,
@@ -81,6 +81,7 @@ pub(crate) struct VxVertexContainer<T> {
 	pub(crate) index: Vec<u32>,
 	z_value: VxVertexZValue,
 }
+
 impl<T> VxVertexContainer<T> {
 	pub fn new(verts: Vec<T>, index: Vec<u32>) -> Self {
 		Self { verts, index, z_value: VxVertexZValue::Disable }
@@ -102,7 +103,7 @@ pub struct VxPainter {
 	transform_stack: Vec<VxMatrix3x3>,
 	pub(crate) vertices: Vec<VxVertexContainer<VxVertex>>,
 	pub(crate) sdf_verts: Vec<VxVertexContainer<VxSdfVertex>>,
-	pub(crate) tex_verts: Vec<VxVertexContainer<VxTexVertex>>,
+	pub(crate) tex_verts: Vec<VxVertexContainer<VxTextureVertex>>,
 	pub(crate) text_data: Vec<VxDrawTextData>,
 }
 
@@ -135,7 +136,7 @@ impl VxPainter {
 		}
 	}
 
-	fn apply_current_transform_tex(&self, verts: &mut [VxTexVertex]) {
+	fn apply_current_transform_tex(&self, verts: &mut [VxTextureVertex]) {
 		let matrix = self.current_tranform();
 		for v in verts {
 			let pos = matrix.transform_point(v.to_vec2());

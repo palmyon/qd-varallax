@@ -27,7 +27,7 @@ impl VxBindlessTextureModule {
 	) -> Self {
 		let dummy_texture = device.create_texture(
 			&wgpu::TextureDescriptor {
-				label: Some("Vx Dummy Texture"),
+				label: Some("VxDummyTexture"),
 				size: wgpu::Extent3d { width: 1, height: 1, depth_or_array_layers: 1 },
 				mip_level_count: 1,
 				sample_count: 1,
@@ -43,7 +43,7 @@ impl VxBindlessTextureModule {
 
 		let bind_group = device.create_bind_group(
 			&wgpu::BindGroupDescriptor {
-				label: Some("Vx Bindless Texture BindGroup"),
+				label: Some("VxBindlessTextureBindGroup"),
 				layout: &bind_group_layout,
 				entries: &[
 					wgpu::BindGroupEntry {
@@ -127,7 +127,7 @@ impl VxGpuResource {
 		// テクスチャバインドグループレイアウトの作成
 		let bind_group_layout = device.create_bind_group_layout(
 			&wgpu::BindGroupLayoutDescriptor {
-				label: Some("Vx Bindless Texture Layout"),
+				label: Some("VxBindlessTextureLayout"),
 				entries: &[
 					wgpu::BindGroupLayoutEntry {
 						binding: 0,
@@ -151,7 +151,7 @@ impl VxGpuResource {
 
 		let sampler = device.create_sampler(
 			&wgpu::SamplerDescriptor {
-				label: Some("Vx Commom Sampler"),
+				label: Some("VxCommomSampler"),
 				address_mode_u: wgpu::AddressMode::ClampToEdge,
 				address_mode_v: wgpu::AddressMode::ClampToEdge,
 				address_mode_w: wgpu::AddressMode::ClampToEdge,
@@ -164,7 +164,7 @@ impl VxGpuResource {
 		// 仮書き込み(画像0の時のお祈り用)
 		let dummy_texture = device.create_texture(
 			&wgpu::TextureDescriptor {
-				label: Some("Vx Dummy Texture"),
+				label: Some("VxDummyTexture"),
 				size: wgpu::Extent3d { width: 1, height: 1, depth_or_array_layers: 1 },
 				mip_level_count: 1,
 				sample_count: 1,

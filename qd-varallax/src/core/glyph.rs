@@ -5,7 +5,7 @@ use std::hash::{
 };
 
 use crate::types::{
-	genelational_vector::VxGenIndex,
+	gen_vector::VxGenIndex,
 	geometry::{
 		VxRect,
 		VxSize,

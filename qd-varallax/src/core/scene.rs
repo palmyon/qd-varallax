@@ -14,7 +14,7 @@ use crate::{
 	},
 	painter::painter::VxPainter,
 	types::{
-		genelational_vector::VxGenVector,
+		gen_vector::VxGenVector,
 		geometry::{VxRect, VxSize, VxVec2}, transform::VxTransform
 	},
 	utils::convert::VxUtilConverter
@@ -94,9 +94,7 @@ impl VxScene {
 				bounding_rect.top_center() - rect.top_center()
 			}
 			VxAlignment::Center => {
-				let x = bounding_rect.center().x() - rect.half_width();
-				let y = bounding_rect.center().y() - rect.half_height();
-				VxVec2::new(x, y)
+				bounding_rect.top_center() - rect.top_center()
 			}
 			VxAlignment::BottomCenter => {
 				bounding_rect.bottom_center() - rect.bottom_center()

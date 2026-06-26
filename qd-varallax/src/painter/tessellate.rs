@@ -3,12 +3,12 @@ use crate::types::{
 		VxRect,
 		VxSize
 	}, style::VxSdfStyle, vertex::{
-		VxSdfVertex, VxTexVertex, VxTextVertex, VxVertex
+		VxSdfVertex, VxTextureVertex, VxTextVertex, VxVertex
 	}
 };
 
 
-pub fn tessellate_texture(rect: VxRect, color: VxColor, uv: VxRect, tex_index: i32) -> ([VxTexVertex; 4], [u32; 6]) {
+pub fn tessellate_texture(rect: VxRect, color: VxColor, uv: VxRect, tex_index: i32) -> ([VxTextureVertex; 4], [u32; 6]) {
 	let x = rect.x();
 	let y = rect.y();
 	let w = rect.width();
@@ -16,11 +16,11 @@ pub fn tessellate_texture(rect: VxRect, color: VxColor, uv: VxRect, tex_index: i
 
 	(
 		[
-			VxTexVertex::new([x, y, 0.0], color, uv.left_top().to_array(), tex_index),
-			VxTexVertex::new([x + w, y, 0.0], color, uv.right_top().to_array(), tex_index),
+			VxTextureVertex::new([x, y, 0.0], color, uv.left_top().to_array(), tex_index),
+			VxTextureVertex::new([x + w, y, 0.0], color, uv.right_top().to_array(), tex_index),
 			
-			VxTexVertex::new([x + w, y + h, 0.0], color, uv.right_bottom().to_array(), tex_index),
-			VxTexVertex::new([x, y + h, 0.0], color, uv.left_bottom().to_array(), tex_index),
+			VxTextureVertex::new([x + w, y + h, 0.0], color, uv.right_bottom().to_array(), tex_index),
+			VxTextureVertex::new([x, y + h, 0.0], color, uv.left_bottom().to_array(), tex_index),
 		],
 		[0, 1, 2, 2, 3, 0]
 	)

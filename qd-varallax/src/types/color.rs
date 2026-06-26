@@ -160,6 +160,12 @@ impl From<VxColorName> for VxColor {
 		Self::from_name(name)
 	}
 }
+impl From<VxColorU8> for VxColor {
+	#[inline]
+	fn from(value: VxColorU8) -> Self {
+		Self::from_vxcoloru8(value)
+	}
+}
 impl Default for VxColor {
 	#[inline]
 	fn default() -> Self {
@@ -640,6 +646,12 @@ impl From<VxColorName> for VxColorU8 {
 	#[inline]
 	fn from(value: VxColorName) -> Self {
 		Self::from_name(value)
+	}
+}
+impl From<VxColor> for VxColorU8 {
+	#[inline]
+	fn from(value: VxColor) -> Self {
+		Self::from_vxcolor(value)
 	}
 }
 impl Default for VxColorU8 {

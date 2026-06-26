@@ -11,7 +11,7 @@ use crate::{
 		VxRectR,
 		VxSize,
 		VxVec2
-	}, vx_connect, widgets::{
+	}, widgets::{
 		button::{
 			VxButtonStyle,
 			VxButtonWidget
@@ -203,7 +203,7 @@ impl VxWindow for VxMessageBox {
 		let id = stat.window.id();
 		let proxy = stat.proxy.clone();
 
-		vx_connect!(button.signals.clicked, move |_, _| {
+		button.signals.clicked.connect(move |_, _| {
 			let _ = proxy.send_event(VxEvent::CloseEvent { window_id: id });
 		});
 

@@ -2,14 +2,14 @@ use crate::types::{color::VxColor, geometry::{VxSize, VxVec2}};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct VxTexVertex {
+pub struct VxTextureVertex {
 	position: [f32; 3],
 	color: [u8; 4],
 	tex_coords: [f32; 2],
 	texture_index: i32,
 }
 
-impl VxTexVertex {
+impl VxTextureVertex {
 	pub const ATTRS: [wgpu::VertexAttribute; 4] = wgpu::vertex_attr_array![
 		0 => Float32x3, // pos
 		1 => Unorm8x4, // color

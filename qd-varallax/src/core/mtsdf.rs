@@ -59,13 +59,13 @@ pub struct VxMtsdfGenerator;
 impl VxMtsdfGenerator {
 	pub const RANGE: f32 = 8.0;
 
-	pub fn create_msdf_from_outline(outline: Outline) -> VxImage {
+	pub fn create_mtsdf_from_outline(outline: Outline) -> VxImage {
 		let bounding_rect = VxFontDataGenerator::create_bounding_rect(&outline);
 		let shape = VxFontDataGenerator::create_shape(&outline);
-		Self::create_msdf_from_shape(bounding_rect, shape)
+		Self::create_mtsdf_from_shape(bounding_rect, shape)
 	}
 
-	pub fn create_msdf_from_shape(bounding_rect: VxRect, mut shape: Shape<Contour>) -> VxImage {
+	pub fn create_mtsdf_from_shape(bounding_rect: VxRect, mut shape: Shape<Contour>) -> VxImage {
 		let padding = VxFontDataGenerator::create_padding(Self::RANGE);
 		let texture_size = VxFontDataGenerator::create_texture_size(bounding_rect, padding);
 		VxFontDataGenerator::apply_transform_to_shape(&mut shape, texture_size, bounding_rect, Self::RANGE);

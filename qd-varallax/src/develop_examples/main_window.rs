@@ -32,14 +32,14 @@ use crate::{
 use vx_macro::VxWindowDerive;
 
 #[derive(VxWindowDerive)]
-pub struct MainWindow {
+pub struct DemoWindow {
     #[vx(Stat)]
     stat: Option<VxWindowStats>,
     #[vx(WindowAttr)]
     window_attr: VxWindowAttributes,
 }
 
-impl VxWindow for MainWindow {
+impl VxWindow for DemoWindow {
     fn init_event(&mut self) {
         let mut bg = VxRectWidget::new(VxRect::from_i32(0, 0, 1920, 1280), VxColor::from_hex(0x202020), None);
 		bg.set_z_value(-3);
@@ -47,7 +47,7 @@ impl VxWindow for MainWindow {
 
 		let mut button = VxButtonWidget::new(
 			VxRectR::new(VxRect::from_i32(0, 0, 250, 50), 10.0),
-			"Clickable",
+			"",
 			VxButtonStyle::new(VxThemeMode::DarkMode, VxFont::from_family_str("kokumr", 32.0)),
 			None
 		);
@@ -55,7 +55,7 @@ impl VxWindow for MainWindow {
 		self.add_widget(button);
 
 		let mut text = VxTextWidget::new(
-			"日本語も表示可能です。\n見てもらえばわかる通り、ボタン上のテキストの配置が\nおかしいですが、気にしてはいけない。",
+			"聡明な皆さん",
 			VxFont::from_family_str("kokumr", 32.0),
 			VxColor::from_hex(0x000000),
 			None,
@@ -78,7 +78,7 @@ impl VxWindow for MainWindow {
 	}
 }
 
-impl MainWindow {
+impl DemoWindow {
     pub fn new(attr: VxWindowAttributes) -> Self {
         Self {
             stat: None,

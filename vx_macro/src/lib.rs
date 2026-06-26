@@ -31,8 +31,8 @@ pub fn vx_window_derive(input: TokenStream) -> TokenStream {
 		}
 	}
 	
-	let stat = stat_field.expect("Need #[vx(Stat)]");
-	let window_attr = attr_field.expect("Need #[vx(WindowAttr)]");
+	let stat = stat_field.expect("VxWindowDerive> Need #[vx(Stat)] on [Option<VxWindowStats>].");
+	let window_attr = attr_field.expect("VxWindowDerive> Need #[vx(WindowAttr)] on [VxWindowAttributes].");
 
 	let expanded = quote! {
 		impl VxWindowInternal for #name {

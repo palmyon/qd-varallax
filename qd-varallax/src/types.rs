@@ -2,6 +2,6 @@ pub mod color;
 pub mod style;
 pub mod geometry;
 pub mod vertex;
-pub mod genelational_vector;
+pub mod gen_vector;
 pub mod transform;
 pub mod texture;

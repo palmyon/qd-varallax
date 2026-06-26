@@ -30,7 +30,7 @@ use crate::{
 	},
 	types::{
 		color::VxColorU8,
-		genelational_vector::{
+		gen_vector::{
 			VxGenIndex,
 			VxGenVector,
 			VxSlot
@@ -44,7 +44,7 @@ use crate::{
 			VxImage,
 			VxTexture
 		},
-		vertex::{VxTexVertex, VxTextVertex},
+		vertex::{VxTextureVertex, VxTextVertex},
 	},
 };
 
@@ -126,7 +126,7 @@ impl VxTextureSystem {
 		}
 
 		self.module.bind_group = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-			label: Some("Vx Bindless Texture BindGroup"),
+			label: Some("VxBindlessTextureBindGroup"),
 			layout: &gpu.bind_group_layout,
 			entries: &[
 				wgpu::BindGroupEntry {
@@ -162,7 +162,7 @@ pub(crate) struct VxFontSystem {
 impl VxFontSystem {
 	pub const ATLAS_ARRAY_SIZE: u32 = 512;
 	pub const ATLAS_SIZE: u32 = 2048;
-	pub const MSDF_SIZE: f32 = 32.0;
+	pub const MTSDF_SIZE: f32 = 32.0;
 
 	pub(crate) fn new(gpu: &VxGpuResource) -> Self {
 		let mut sys = Self {
@@ -187,7 +187,7 @@ impl VxFontSystem {
 		if let Some(font_ref) = VxFontDataGenerator::create_fontref(font_data) {
 			let family = VxFont::hash(font_family);
 
-			let vertical_metrics = VxFontDataGenerator::create_vertical_metrics(&font_ref, Self::MSDF_SIZE);
+			let vertical_metrics = VxFontDataGenerator::create_vertical_metrics(&font_ref, Self::MTSDF_SIZE);
 			self.vertical_metrics.insert(family, vertical_metrics);
 
 			self.fonts_data.insert(family, font_data.to_vec());
@@ -239,10 +239,10 @@ impl VxFontSystem {
 
 		// 高さ優先でソート
 		size_result.sort_unstable_by(|a, b| {
-			b.size
-				.height()
+			b.size.height()
 				.total_cmp(&a.size.height())
-				.then_with(|| b.size.width().total_cmp(&a.size.width()))
+				.then_with(|| b.size.width()
+				.total_cmp(&a.size.width()))
 		});
 
 		for size_res in size_result.drain(..) {
@@ -255,7 +255,10 @@ impl VxFontSystem {
 
 				let (glyph_info, msdf_texture) = Self::create_glyph(rect, size_res.bounding_rect, shape, size_res.advance);
 
-				self.glyph_map.insert((font_family, size_res.ch), (atlas.id, glyph_info));
+				self.glyph_map.insert(
+					(font_family, size_res.ch),
+					(atlas.id, glyph_info)
+				);
 
 				Self::update_atlas_texture(gpu, wgpu_texture, rect, msdf_texture);
 			}
@@ -337,7 +340,7 @@ impl VxFontSystem {
 		let bearing_x = VxFontDataGenerator::create_bearing_x(bounding_rect, VxMtsdfGenerator::RANGE);
 		let bearing_y = VxFontDataGenerator::create_bearing_y(bounding_rect, VxMtsdfGenerator::RANGE);
 
-		let msdf_texture = VxMtsdfGenerator::create_msdf_from_shape(bounding_rect, shape);
+		let msdf_texture = VxMtsdfGenerator::create_mtsdf_from_shape(bounding_rect, shape);
 		let (w, h) = msdf_texture.size().to_tuple();
 
 		let atlas_size = Self::ATLAS_SIZE as f32;
@@ -408,7 +411,7 @@ impl VxFontSystem {
 		}
 
 		self.module.bind_group = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-			label: Some("Vx Bindless Texture BindGroup"),
+			label: Some("VxBindlessTextureBindGroup"),
 			layout: &gpu.bind_group_layout,
 			entries: &[
 				wgpu::BindGroupEntry {
@@ -423,7 +426,7 @@ impl VxFontSystem {
 		});
 	}
 
-	pub(crate) fn generate_text_verices(
+	pub(crate) fn generate_text_vertices(
 		&mut self,
 		gpu: &VxGpuResource,
 		mut data: Vec<VxDrawTextData>,
@@ -434,14 +437,14 @@ impl VxFontSystem {
 		for cmd in data.drain(..) {
 			let cmd_family = cmd.font.family();
 
-			let resolved_family = self.ensure_glyphs(gpu, Self::MSDF_SIZE, cmd_family, &cmd.text);
+			let resolved_family = self.ensure_glyphs(gpu, Self::MTSDF_SIZE, cmd_family, &cmd.text);
 
 			let font_size = cmd.font.pixel_size();
 			let vertical_metrics = self.vertical_metrics.get(&resolved_family).expect(
-				"VxFontSystem> CriticalError: Font metrics must exist for resolved font family.",
+				"VxFontSystem> CriticalError: Font metrics must exist for resoalved font family.",
 			);
 			let line_height = vertical_metrics.create_line_height();
-			let scale = font_size / Self::MSDF_SIZE;
+			let scale = font_size / Self::MTSDF_SIZE;
 			let mut cursor = VxVec2::default();
 
 			for ch in cmd.text.chars() {
@@ -491,7 +494,7 @@ impl VxFontSystem {
 		all_array
 	}
 
-	pub(crate) fn debug_atlas(&self, raw_atlas_index: i32) -> VxVertexContainer<VxTexVertex> {
+	pub(crate) fn debug_atlas(&self, raw_atlas_index: i32) -> VxVertexContainer<VxTextureVertex> {
 		let (vert, index) = tessellate::tessellate_texture(
 			VxRect::from_u32(0, 0, 2048, 2048),
 			0xFFFFFF.into(),
@@ -504,7 +507,7 @@ impl VxFontSystem {
 	pub fn create_text_bounding_rect(&self, font: VxFont, text: &str) -> VxRect {
 		let mut result_rect = VxRect::default();
 
-		let scale = font.pixel_size() / Self::MSDF_SIZE;
+		let scale = font.pixel_size() / Self::MTSDF_SIZE;
 
 		let mut cursor = VxVec2::default();
 		let Some(vertical_metrics) = self.vertical_metrics.get(&font.family()) else { return result_rect; };
