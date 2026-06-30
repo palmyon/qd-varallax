@@ -127,8 +127,8 @@ impl VxWidget for VxButtonWidget {
 			self.rect,
 			draw_color,
 			VxColor::from_hex(0x00D4FF),
-			10.0,
-			15.0
+			5.0,
+			5.0
 		));
 		painter.pop_transform();
 	}

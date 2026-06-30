@@ -1,7 +1,7 @@
 use crate::{
 	core::{
 		gpu_resource::VxGpuResource,
-		resource::VxAppResources
+		resource::VxAppResource
 	},
 	painter::painter::VxVertexContainer,
 	types::{
@@ -292,7 +292,7 @@ impl VxRenderer {
 		self.text_module.update_projection(gpu, &orthographic);
 	}
 
-	pub fn render(&mut self, res: &mut VxAppResources, surface: &wgpu::Surface) {
+	pub fn render(&mut self, res: &mut VxAppResource, surface: &wgpu::Surface) {
 		let frame = surface.get_current_texture().expect("VxRenderer> render(): Failed to [get_current_texture]");
 		let view = frame.texture.create_view(&wgpu::TextureViewDescriptor::default());
 		let mut encoder = res.gpu.device.create_command_encoder(
@@ -353,7 +353,7 @@ impl VxRenderer {
 		frame.present();
 	}
 
-	fn exec_draw(&self, render_pass: &mut wgpu::RenderPass, line: VxDrawLine, res: &VxAppResources) {
+	fn exec_draw(&self, render_pass: &mut wgpu::RenderPass, line: VxDrawLine, res: &VxAppResource) {
 		let module = match line.module {
 			VxModuleId::VertexModule => &self.vertex_module,
 			VxModuleId::SdfModule => &self.sdf_module,

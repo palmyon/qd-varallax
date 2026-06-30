@@ -8,13 +8,13 @@ use crate::core::{
 
 
 
-pub(crate) struct VxAppResources {
+pub(crate) struct VxAppResource {
 	pub gpu: VxGpuResource,
 	pub fonts: VxFontSystem,
 	pub textures: VxTextureSystem,
 }
 
-impl VxAppResources {
+impl VxAppResource {
 	pub(crate) fn new() -> Self {
 		let gpu = pollster::block_on(VxGpuResource::new());
 		let textures = VxTextureSystem::new(&gpu);

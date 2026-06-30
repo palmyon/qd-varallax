@@ -5,7 +5,7 @@ use crate::{
 	}},
 	core::{
 		bvh::VxSpatialIndex,
-		resource::VxAppResources,
+		resource::VxAppResource,
 		vx_event::{
 			VxEventResult,
 			VxKeyEvent,
@@ -45,7 +45,7 @@ impl VxScene {
 	// private methods
 	fn paint_widget(
 		&mut self,
-		res: &mut VxAppResources,
+		res: &mut VxAppResource,
 		id: VxWidgetId,
 		painter: &mut VxPainter,
 	) {
@@ -176,7 +176,12 @@ impl VxScene {
 		id
 	}
 
-	pub fn get_widget<W: VxWidget>(&mut self, widget: &VxWidgetHandler<W>) -> Option<&mut W> {
+	pub fn get_widget<W: VxWidget>(&self, widget: VxWidgetHandler<W>) -> Option<&W> {
+		self.widgets.get(widget.id().id())?
+			.as_any()
+			.downcast_ref::<W>()
+	}
+	pub fn get_widget_mut<W: VxWidget>(&mut self, widget: VxWidgetHandler<W>) -> Option<&mut W> {
 		self.widgets.get_mut(widget.id().id())?
 			.as_any_mut()
 			.downcast_mut::<W>()
@@ -214,7 +219,7 @@ impl VxScene {
 	// Events
 	pub fn paint_event(
 		&mut self,
-		res: &mut VxAppResources,
+		res: &mut VxAppResource,
 		painter: &mut VxPainter,
 	) {
 		for id in self.top_level_widgets.clone() {

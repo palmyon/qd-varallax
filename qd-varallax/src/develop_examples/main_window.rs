@@ -52,7 +52,7 @@ impl VxWindow for DemoWindow {
 			None
 		);
 		button.set_pos(VxVec2::from_i32(500, 350));
-		self.add_widget(button);
+		let button = self.add_widget(button);
 
 		let mut text = VxTextWidget::new(
 			"聡明な皆さん",
@@ -63,18 +63,10 @@ impl VxWindow for DemoWindow {
 		text.set_pos(VxVec2::from_i32(750, 340));
 		self.add_widget(text);
 
-		for i in 0..1920 {
-			for j in 0..12 {
-				let mut rect = VxRectWidget::new(
-					VxRect::from_i32(0, 0, 1, 100),
-					VxColor::from_hsv(i as f32 / 1920.0, 1.0, 1.0),
-					None
-				);
-				rect.set_pos(VxVec2::from_i32(i, j * 100));
-				rect.set_z_value(-1);
-				self.add_widget(rect);
-			}
-		}
+		let btn = self.get_widget(button.unwrap()).unwrap();
+		btn.signals.clicked.connect(|_, _| {
+			println!("ボタンをマウスで押し込め！！！！ふん！！！！！")
+		});
 	}
 }
 

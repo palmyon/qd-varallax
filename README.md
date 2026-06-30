@@ -69,7 +69,7 @@ QD-Varallax implements an architecture roughly outlined in the diagram below:
 ## Main components
 * <b><a href = "./qd-varallax/src/core/application.rs">VxApplication</a></b> -
 Manages the `winit` EventLoop and WindowEvents, dispatching them to their respective windows.
-* <b><a href = "./qd-varallax/src/core/resource.rs">VxAppResources</a></b> -
+* <b><a href = "./qd-varallax/src/core/resource.rs">VxAppResource</a></b> -
 Manages the `wgpu` resources and maintains application-wide shared data.
 * <b><a href = "./qd-varallax/src/core/renderer.rs">VxRenderer</a></b> -
 A component that sorts vertices from <a href = "./qd-varallax/src/abstractions/abstract_windows.rs">VxWindowStats</a>,
@@ -86,7 +86,7 @@ The core trait for widgets. Implementing this trait and incorporating `VxWidgetS
 ## Main Functions
 ### Application
 * Manages `winit` events, converting and dispatching them to their respective windows. 
-* Holds application-wide resources (`VxAppResources`) and provides references to them during relevant events.
+* Holds application-wide resources (`VxAppResource`) and provides references to them during relevant events.
 * Manages all windows, drives the <i>dirty-check</i> loop, and automatically handles application exit.
 
 ### Widget
@@ -217,7 +217,7 @@ QD-Varallaxでは、大まかに以下の図(英語版と共通)のようなア�
 </picture>
 ## 主要コンポーネント
 * <b><a href = "./qd-varallax/src/core/application.rs">VxApplication</a></b> - winitのイベントループとウィンドウイベントを管理し、それぞれのウィンドウに振り分ける。
-* <b><a href = "./qd-varallax/src/core/resource.rs">VxAppResources</a></b> - wgpuのリソースを管理し、アプリ共通のデータを保有&管理する。
+* <b><a href = "./qd-varallax/src/core/resource.rs">VxAppResource</a></b> - wgpuのリソースを管理し、アプリ共通のデータを保有&管理する。
 * <b><a href = "./qd-varallax/src/core/renderer.rs">VxRenderer</a></b> - <a href = "./qd-varallax/src/abstractions/abstract_windows.rs">VxWindowStats</a>から
 受け取った頂点をソートしてバッファに書き込み、バッチング描画を実行するコンポーネント。
 * <b><a href = "./qd-varallax/src/abstractions/abstract_windows.rs">VxWindowStats</a></b> - ウィンドウ単位のリソースを管理し、ウィンドウ本体のデータとして動作する。
@@ -229,7 +229,7 @@ QD-Varallaxでは、大まかに以下の図(英語版と共通)のようなア�
 ## 主要機能
 ### アプリケーション
 * `winit`のイベントを管理し、各ウィンドウに適切なイベントを変換して振り分ける。
-* アプリケーション全体のリソース(`VxAppResources`)を保有し、必要となるイベントで参照を渡す。
+* アプリケーション全体のリソース(`VxAppResource`)を保有し、必要となるイベントで参照を渡す。
 * 全てのウィンドウを管理し、描画チェックのループや、アプリケーションの終了などを自動で行う。
 
 ### ウィジェット
@@ -324,8 +324,8 @@ QD-Varallaxは、以下のデュアルライセンスのもとで提供されて
 * **Apache License, Version 2.0** ([LICENSE-APACHE](/LICENSE-APACHE.txt)、または http://www.apache.org/licenses/LICENSE-2.0)
 * **MIT License** ([LICENSE-MIT](./LICENSE-MIT)、または http://opensource.org/licenses/MIT)
 
+お好きな方を選んでお好きなようにお使いください。
+
 # 開発中のおまけ
 2026-06-15: ヒット判定を、純WideBVH実装からTLAS/BLAS実装に変えようと思います。BVH単体だと動体に弱かったので、GUIに不向きだな～と思って。
-
-お好きな方を選んでお好きなようにお使いください。
 </details>

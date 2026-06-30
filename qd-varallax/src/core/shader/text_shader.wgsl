@@ -47,6 +47,12 @@ fn median(r: f32, g: f32, b: f32) -> f32 {
     return max(min(r, g), min(max(r, g), b));
 }
 
+// 通常のMTSDF処理では、MTSDF_SIZE = 32.0の時、文字が細いフォントでの文字の部分的断裂が確認できた。
+// そのため、それを回避する策として、最終生成SDを2.35倍して、0以上の値を持ち上げ、
+// 16乗してクランプすることでくっきりさせる手法をとった。
+// smoothstepの場合切り捨てられてしまう範囲の値も持ち上げて無理やり描画させることが出来る。
+// ただ、無駄に持ち上げてしまうため、最初にsd - 0.05して細く補正している。
+// また、アウトライン実装もうまくいかなかったため、powの値を動的にいじることで実装した。
 @fragment
 fn fs_main(out: VertexOutput) -> @location(0) vec4f {
 	let mtsdf = textureSample(t_diffuse[out.texture_index], mtsdf_sampler, out.tex_coords);

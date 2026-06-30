@@ -23,7 +23,7 @@ use crate::{
 		VxWindowStats
 	},
 	core::{
-		resource::VxAppResources, vx_event::{
+		resource::VxAppResource, vx_event::{
 			VxEvent,
 			VxKeyEvent,
 			VxMouseEvent,
@@ -38,7 +38,7 @@ use crate::{
 
 
 struct VxAppHandler {
-	resources: Option<VxAppResources>,
+	resources: Option<VxAppResource>,
 	windows: HashMap<WindowId, Box<dyn VxWindow>>,
 	init_windows: Vec<Box<dyn VxWindow>>,
 
@@ -51,7 +51,7 @@ impl ApplicationHandler<VxEvent> for VxAppHandler {
 	fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
 		// 初期化前なら初期化
 		if self.resources.is_none() {
-			self.resources = Some(VxAppResources::new());
+			self.resources = Some(VxAppResource::new());
 		} else {
 			return;
 		}

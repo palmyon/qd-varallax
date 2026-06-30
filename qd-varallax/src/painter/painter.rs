@@ -34,6 +34,7 @@ pub(crate) struct VxDrawTextData {
 }
 
 impl VxDrawTextData {
+	#[inline]
 	pub(crate) fn new(
 		text: &str,
 		font: VxFont,
@@ -44,7 +45,7 @@ impl VxDrawTextData {
 		blur_radius: f32,
 	) -> Self {
 		Self {
-			text: text.to_string(),
+			text: text.into(),
 			font,
 			color,
 			matrix,
@@ -54,8 +55,11 @@ impl VxDrawTextData {
 			blur_radius,
 		}
 	}
+	#[inline]
 	pub fn z_value(&self) -> i32 { self.z_value.z_value() }
+	#[inline]
 	pub fn is_z_enable(&self) -> bool { self.z_value != VxVertexZValue::Disable }
+	#[inline]
 	pub fn set_z_value(&mut self, z: i32) {
 		self.z_value = VxVertexZValue::Enable { z };
 	}
@@ -118,13 +122,13 @@ impl VxPainter {
 		}
 	}
 
-	pub fn current_tranform(&self) -> &VxMatrix3x3 {
-		self.transform_stack.last()
+	pub fn current_tranform(&self) -> VxMatrix3x3 {
+		*self.transform_stack.last()
 		.expect("VxPainter> transform_stack: Not found last VxMatrix3x3. Check [VxWidget> paint] event.")
 	}
 
 	pub fn push_tranform(&mut self, transform: VxTransform) {
-		let new_matrix = *self.current_tranform() * VxMatrix3x3::from_transform(transform);
+		let new_matrix = self.current_tranform() * VxMatrix3x3::from_transform(transform);
 		self.transform_stack.push(new_matrix);
 	}
 
@@ -213,7 +217,7 @@ impl VxPainter {
 		outline_width: f32,
 		blur_radius: f32,
 	) {
-		let matrix = *self.current_tranform();
+		let matrix = self.current_tranform();
 		self.text_data.push(VxDrawTextData::new(
 			text, font, color, matrix, outline_color, outline_width, blur_radius
 		));
