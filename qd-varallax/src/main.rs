@@ -10,13 +10,12 @@ mod widgets;
 mod develop_examples;
 
 use crate::{
-	core::application::VxApplication,
-	widgets::default_window::VxDefaultWindow,
+	core::application::VxApplication, develop_examples::main_window::DemoWindow,
 };
 
 fn main() {
 	let mut app = VxApplication::new();
-	let window = VxDefaultWindow::new(Default::default());
+	let window = DemoWindow::new(Default::default());
 	app.add_window(window);
 	app.exec();
 }

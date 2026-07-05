@@ -1,5 +1,5 @@
 pub mod application;
-pub mod bvh;
+pub mod spatial_index;
 pub mod glyph;
 pub mod mtsdf;
 pub mod gpu_resource;

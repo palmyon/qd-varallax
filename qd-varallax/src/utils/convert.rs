@@ -7,7 +7,7 @@ use crate::types::geometry::VxRect;
 pub struct VxUtilConverter;
 
 impl VxUtilConverter {
-	pub fn rect_to_aabb(rect: &VxRect) -> Aabb {
+	pub fn rect_to_aabb(rect: VxRect) -> Aabb {
 		let left_top = rect.left_top();
 		let right_bottom = rect.right_bottom();
 		Aabb::new(

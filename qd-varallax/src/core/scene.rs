@@ -4,7 +4,7 @@ use crate::{
 		VxWidget, VxWidgetHandler, VxWidgetId
 	}},
 	core::{
-		bvh::VxSpatialIndex,
+		spatial_index::VxSpatialIndex,
 		resource::VxAppResource,
 		vx_event::{
 			VxEventResult,
@@ -140,7 +140,7 @@ impl VxScene {
 				widget.set_dirty(false);
 				self.spatial_index.update_at(
 					VxWidgetId::new(id),
-					VxUtilConverter::rect_to_aabb(&widget.bounding_rect())
+					VxUtilConverter::rect_to_aabb(widget.bounding_rect())
 				);
 			}
 		}
@@ -191,7 +191,7 @@ impl VxScene {
 		let mut data = vec![];
 		for (index, widget) in self.widgets.iter_with_id() {
 			let rect = widget.bounding_rect();
-			let aabb = VxUtilConverter::rect_to_aabb(&rect);
+			let aabb = VxUtilConverter::rect_to_aabb(rect);
 			data.push((VxWidgetId::new(index), aabb));
 		}
 		self.spatial_index.rebuild_bvh(&data);

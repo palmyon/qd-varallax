@@ -3,12 +3,8 @@ use vx_macro::VxWidgetDerive;
 
 use crate::{
 	abstractions::abstract_widgets::{
-		VxDefaultSignals, VxWidget, VxWidgetId, VxWidgetInternal, VxWidgetStats
+		VxWidget, VxWidgetId, VxWidgetInternal, VxWidgetStats
 	},
-	core::vx_event::{
-			VxEventResult,
-			VxMouseEvent
-		},
 	types::{
 		color::VxColor,
 		geometry::VxRect,
@@ -23,7 +19,6 @@ pub struct VxRectWidget {
 	stat: VxWidgetStats,
 	rect: VxRect,
 	color: VxColor,
-	pub signals: VxDefaultSignals<Self>
 }
 
 impl VxWidget for VxRectWidget {
@@ -36,24 +31,6 @@ impl VxWidget for VxRectWidget {
 		painter.draw_rect(self.rect, self.color);
 		painter.pop_transform();
 	}
-
-	fn mouse_release_event(&mut self, event: &VxMouseEvent) -> VxEventResult {
-		let s = self.signals.released.clone();
-		s.emit(self, &event.pos());
-		VxEventResult::Ignore
-	}
-
-	fn mouse_enter_event(&mut self, event: &VxMouseEvent) -> VxEventResult {
-		let s = self.signals.hovered.clone();
-		s.emit(self, &event.pos());
-		VxEventResult::Ignore
-	}
-
-	fn mouse_leave_event(&mut self, event: &VxMouseEvent) -> VxEventResult {
-		let s = self.signals.leaved.clone();
-		s.emit(self, &event.pos());
-		VxEventResult::Ignore
-	}
 }
 
 impl VxRectWidget {
@@ -62,7 +39,6 @@ impl VxRectWidget {
 			stat: VxWidgetStats::new(parent),
 			rect,
 			color,
-			signals: VxDefaultSignals::new(),
 		};
 		new.set_rect(rect);
 		new

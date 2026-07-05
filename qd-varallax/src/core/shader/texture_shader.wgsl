@@ -5,8 +5,8 @@ struct Projection {
 @group(0) @binding(0)
 var<uniform> projection: Projection;
 
-@group(1) @binding(0) var t_diffuse: binding_array<texture_2d<f32>>;
-@group(1) @binding(1) var s_diffuse: sampler;
+@group(1) @binding(0) var texture_array: binding_array<texture_2d<f32>>;
+@group(1) @binding(1) var texture_sampler: sampler;
 
 struct VertexInput {
     @location(0) pos: vec3<f32>,
@@ -35,6 +35,6 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 	let index  = u32(in.texture_index);
-	let tex_color = textureSample(t_diffuse[index], s_diffuse, in.tex_coords);
+	let tex_color = textureSample(texture_array[index], texture_sampler, in.tex_coords);
 	return tex_color * in.color;
 }
