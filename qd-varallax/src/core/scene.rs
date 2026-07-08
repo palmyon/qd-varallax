@@ -1,8 +1,14 @@
-
 use crate::{
-	abstractions::{abstract_layouts::{VxAlignment}, abstract_widgets::{
-		VxWidget, VxWidgetHandler, VxWidgetId
-	}},
+	abstractions::{
+		abstract_layouts::{
+			VxAlignment
+		},
+		abstract_widgets::{
+			VxWidget,
+			VxWidgetHandler,
+			VxWidgetId
+		}
+	},
 	core::{
 		spatial_index::VxSpatialIndex,
 		resource::VxAppResource,
@@ -15,7 +21,12 @@ use crate::{
 	painter::painter::VxPainter,
 	types::{
 		gen_vector::VxGenVector,
-		geometry::{VxRect, VxSize, VxVec2}, transform::VxTransform
+		geometry::{
+			VxRect,
+			VxSize,
+			VxVec2
+		},
+		transform::VxTransform
 	},
 	utils::convert::VxUtilConverter
 };
@@ -224,7 +235,7 @@ impl VxScene {
 	) {
 		for id in self.top_level_widgets.clone() {
 			self.paint_widget(res, id, painter);
-		}
+		};
 	}
 	// MouseEvents
 	pub fn mouse_press_event(&mut self, event: &VxMouseEvent)  -> VxEventResult {

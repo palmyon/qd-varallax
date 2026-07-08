@@ -9,6 +9,8 @@ use std::{
 	}
 };
 
+use smallvec::SmallVec;
+
 use crate::types::gen_vector::{
 	VxGenIndex,
 	VxGenVector
@@ -24,6 +26,10 @@ pub trait VxSignalPolicy {
 	fn with_mut<T, R>(
 		container: &Self::VxSignalContainer<T>,
 		f: impl FnOnce(&mut T) -> R
+	) -> R;
+	fn with<T, R>(
+		container: &Self::VxSignalContainer<T>,
+		f: impl FnOnce(&T) -> R
 	) -> R;
 }
 
@@ -44,6 +50,13 @@ impl VxSignalPolicy for VxLocalSignalPolicy {
 		f: impl FnOnce(&mut T) -> R
 	) -> R {
 		f(&mut container.borrow_mut())
+	}
+	fn with<T, R>(
+			container: &Self::VxSignalContainer<T>,
+			f: impl FnOnce(&T) -> R
+		) -> R
+	{
+		f(&container.borrow())
 	}
 }
 
@@ -66,6 +79,13 @@ impl VxSignalPolicy for VxSharedSignalPolicy {
 		f(&mut container.lock()
 			.expect("VxSignal[Shared]> CrititalError: Failed to lock"))
 	}
+	fn with<T, R>(
+			container: &Self::VxSignalContainer<T>,
+			f: impl FnOnce(&T) -> R
+		) -> R
+	{
+		f(&container.lock().expect("VxSignal[Shared]> CrititalError: Failed to lock"))
+	}
 }
 
 pub struct VxQuickSignalPolicy;
@@ -86,17 +106,38 @@ impl VxSignalPolicy for VxQuickSignalPolicy {
 	) -> R {
 		f(&mut container.borrow_mut())
 	}
+	fn with<T, R>(
+			container: &Self::VxSignalContainer<T>,
+			f: impl FnOnce(&T) -> R
+		) -> R
+	{
+		f(&container.borrow())
+	}
+}
+
+pub(crate) struct VxSignalState<T> {
+	pub handler: VxGenVector<T>,
+	pub enabled: bool,
+}
+impl<T> VxSignalState<T> {
+	#[inline]
+	pub fn new() -> Self {
+		Self {
+			handler: VxGenVector::new(),
+			enabled: true,
+		}
+	}
 }
 
 pub struct VxSignal
 <Sender: ?Sized, M: 'static, P: VxSignalPolicy = VxLocalSignalPolicy> {
-	handler: P::VxSignalContainer<VxGenVector<P::VxSignalHandler<P::FnClosure<Sender, M>>>>,
+	state: P::VxSignalContainer<VxSignalState<P::VxSignalHandler<P::FnClosure<Sender, M>>>>,
 	_marker: PhantomData<P>,
 }
 impl<Sender: ?Sized, M: 'static, S: VxSignalPolicy> Clone for VxSignal<Sender, M, S> {
 	fn clone(&self) -> Self {
 		Self {
-			handler: self.handler.clone(),
+			state: self.state.clone(),
 			_marker: PhantomData
 		}
 	}
@@ -104,44 +145,72 @@ impl<Sender: ?Sized, M: 'static, S: VxSignalPolicy> Clone for VxSignal<Sender, M
 impl<Sender: ?Sized, M: 'static, S: VxSignalPolicy> VxSignal<Sender, M, S> {
 	pub fn new() -> Self {
 		Self {
-			handler: S::new(VxGenVector::new()),
+			state: S::new(VxSignalState::new()),
 			_marker: PhantomData,
 		}
 	}
 	#[inline(always)]
 	pub fn emit(&self, sender: &mut Sender, msg: &M) {
+		// LLVMを信じて定数分岐
 		if S::TAKE_SNAPSHOT {
-			let snapshot = S::with_mut(&self.handler, |v| {
-				v.iter().cloned().collect::<Vec<_>>()
+			let snapshot = S::with_mut(&self.state, |v| {
+				if !v.enabled {
+					return None;
+				}
+				Some(
+					v.handler.iter()
+						.cloned()
+						.collect::<SmallVec<[_; 8]>>()
+				)
 			});
-			for c in snapshot {
-				c(sender, msg)
+			if let Some(shot) = snapshot {
+				shot.iter().for_each(|f| f(sender, msg));
 			}
 		} else {
-			S::with_mut(&self.handler, |v| {
-				v.iter().for_each(|f| {
-					f(sender, msg)
-				});
+			S::with_mut(&self.state, |v| {
+				if v.enabled {
+					v.handler.iter().for_each(|f| {
+						f(sender, msg)
+					});
+				}
 			})
 		}
-		
 	}
 	pub fn internal_connect(&self, f: Box<S::FnClosure<Sender, M>>) -> VxGenIndex {
-		S::with_mut(&self.handler, |v| {
-			v.insert(S::new_handler(f))
+		S::with_mut(&self.state, |v| {
+			v.handler.insert(S::new_handler(f))
 		})
 	}
 	pub fn internal_disconnect(&self, id: VxGenIndex) -> bool {
 		S::with_mut(
-			&self.handler,
-			|v| v.remove(id)
+			&self.state,
+			|v| v.handler.remove(id)
 		).is_some()
 	}
+	#[inline]
 	pub fn internal_clear(&self) -> usize {
-		S::with_mut(&self.handler, |v| {
-			let len = v.len();
-			v.clear();
+		S::with_mut(&self.state, |v| {
+			let len = v.handler.len();
+			v.handler.clear();
 			len
+		})
+	}
+	#[inline]
+	pub fn internal_slot_count(&self) -> usize {
+		S::with(&self.state, |v| {
+			v.handler.len()
+		})
+	}
+	#[inline]
+	pub fn internal_set_enabled(&mut self, enabled: bool) {
+		S::with_mut(&self.state, |v| {
+			v.enabled = enabled;
+		});
+	}
+	#[inline]
+	pub fn internal_is_enabled(&self) -> bool {
+		S::with(&self.state, |v| {
+			v.enabled
 		})
 	}
 }
@@ -168,8 +237,8 @@ impl<Sender: ?Sized, M: 'static, S: VxSignalPolicy> VxSignal<Sender, M, S> {
 /// vx_signal!(pub struct BarSignal >> bool);
 /// // Defines a thread-safe 'VxSignal` struct named `SharedFooSignal` that passes `(i32, usize)` when emitted.
 /// vx_signal!(shared pub struct SharedFooSignal >> (i32, usize));
-/// // Defines a quick-mode 'VxSignal' struct named 'QuickFooSignal' that passes '[f32; 3]' when emitted.
-/// vx_signal!(quick pub struct QuickFooSignal >> [f32; 3]);
+/// // Defines a quick-mode 'VxSignal' struct named 'QuickFooSignal' that passes 'String' when emitted.
+/// vx_signal!(quick pub struct QuickFooSignal >> String);
 /// ```
 #[macro_export]
 macro_rules! vx_signal {
@@ -185,15 +254,6 @@ macro_rules! vx_signal {
 		}
 
 		impl<Sender: ?Sized> $name<Sender> {
-			pub fn new() -> Self {
-				Self {
-					inner: $crate::core::signal::VxSignal::new(),
-				}
-			}
-			#[inline(always)]
-			pub fn emit(&self, sender: &mut Sender, msg: &$msg) {
-				self.inner.emit(sender, msg);
-			}
 			pub fn connect<F>(
 				&self, f: F
 			) -> $crate::types::gen_vector::VxGenIndex
@@ -201,12 +261,7 @@ macro_rules! vx_signal {
 			{
 				self.inner.internal_connect(Box::new(f))
 			}
-			pub fn disconnect(&self, id: $crate::types::gen_vector::VxGenIndex) -> bool {
-				self.inner.internal_disconnect(id)
-			}
-			pub fn clear(&self) -> usize {
-				self.inner.internal_clear()
-			}
+			$crate::signal_functions!($msg);
 		}
 	};
 	(shared $vis:vis struct $name:ident >> $msg:ty) => {
@@ -223,15 +278,6 @@ macro_rules! vx_signal {
 		}
 
 		impl<Sender: ?Sized + Send + Sync> $name<Sender> {
-			pub fn new() -> Self {
-				Self {
-					inner: $crate::core::signal::VxSignal::new(),
-				}
-			}
-			#[inline(always)]
-			pub fn emit(&self, sender: &mut Sender, msg: &$msg) {
-				self.inner.emit(sender, msg);
-			}
 			pub fn connect<F>(
 				&self, f: F
 			) -> $crate::types::gen_vector::VxGenIndex
@@ -239,12 +285,7 @@ macro_rules! vx_signal {
 			{
 				self.inner.internal_connect(Box::new(f))
 			}
-			pub fn disconnect(&self, id: $crate::types::gen_vector::VxGenIndex) -> bool {
-				self.inner.internal_disconnect(id)
-			}
-			pub fn clear(&self) -> usize {
-				self.inner.internal_clear()
-			}
+			$crate::signal_functions!($msg);
 		}
 	};
 	(quick $vis:vis struct $name:ident >> $msg:ty) => {
@@ -259,15 +300,6 @@ macro_rules! vx_signal {
 		}
 
 		impl<Sender: ?Sized> $name<Sender> {
-			pub fn new() -> Self {
-				Self {
-					inner: $crate::core::signal::VxSignal::new(),
-				}
-			}
-			#[inline(always)]
-			pub fn emit(&self, sender: &mut Sender, msg: &$msg) {
-				self.inner.emit(sender, msg);
-			}
 			pub fn connect<F>(
 				&self, f: F
 			) -> $crate::types::gen_vector::VxGenIndex
@@ -275,12 +307,43 @@ macro_rules! vx_signal {
 			{
 				self.inner.internal_connect(Box::new(f))
 			}
-			pub fn disconnect(&self, id: $crate::types::gen_vector::VxGenIndex) -> bool {
-				self.inner.internal_disconnect(id)
-			}
-			pub fn clear(&self) -> usize {
-				self.inner.internal_clear()
-			}
+			$crate::signal_functions!($msg);
 		}
 	};
+}
+
+#[macro_export]
+macro_rules! signal_functions {
+	($msg:ty) => {
+		#[inline(always)]
+		pub fn new() -> Self {
+			Self {
+				inner: $crate::core::signal::VxSignal::new(),
+			}
+		}
+		#[inline(always)]
+		pub fn emit(&self, sender: &mut Sender, msg: &$msg) {
+			self.inner.emit(sender, msg);
+		}
+		#[inline(always)]
+		pub fn disconnect(&self, id: $crate::types::gen_vector::VxGenIndex) -> bool {
+			self.inner.internal_disconnect(id)
+		}
+		#[inline(always)]
+		pub fn clear(&self) -> usize {
+			self.inner.internal_clear()
+		}
+		#[inline(always)]
+		pub fn slot_count(&self) -> usize {
+			self.inner.internal_slot_count()
+		}
+		#[inline(always)]
+		pub fn set_enabled(&mut self, enabled: bool) {
+			self.inner.internal_set_enabled(enabled)
+		}
+		#[inline]
+		pub fn is_enabled(&self) -> bool {
+			self.inner.internal_is_enabled()
+		}
+	}
 }

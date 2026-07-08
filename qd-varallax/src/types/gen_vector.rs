@@ -125,7 +125,7 @@ impl<T> std::ops::Index<VxGenIndex> for VxGenVector<T> {
 
 	#[inline]
 	fn index(&self, index: VxGenIndex) -> &Self::Output {
-		self.get(index).expect("Invalid Generation Index")
+		self.get(index).expect("VxGenVector> Critical: Invalid Generation Index")
 	}
 }
 

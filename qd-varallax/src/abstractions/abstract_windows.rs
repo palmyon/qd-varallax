@@ -381,14 +381,10 @@ pub trait VxWindow: VxWindowInternal {
 	}
 }
 
-//add_widgetのための拡張
 pub trait VxWindowExt: VxWindow {
 	fn add_widget<W: VxWidget + 'static>(&mut self, widget: W) -> Option<VxWidgetHandler<W>> {
-		if let Some(id) = self.send_widget_to_scene(Box::new(widget)) {
-			Some(VxWidgetHandler::new(id))
-		} else {
-			None
-		}
+		let id = self.send_widget_to_scene(Box::new(widget))?;
+		Some(VxWidgetHandler::<W>::new(id))
 	}
 	fn get_widget<W: VxWidget>(&self, handler: VxWidgetHandler<W>) -> Option<&W> {
 		if let Some(stats) = self.stats() {

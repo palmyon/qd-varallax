@@ -176,8 +176,7 @@ impl VxWidget for VxButtonWidget {
 		self.state.set_pressed(false);
 		self.set_dirty(true);
 
-		let s = self.signals.leaved.clone();
-		s.emit(self, &event.pos());
+		self.signals.leaved.clone().emit(self, &event.pos());
 		VxEventResult::Accept
 	}
 }

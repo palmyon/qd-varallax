@@ -115,10 +115,10 @@ impl VxPainter {
 	pub fn new() -> Self {
 		Self {
 			transform_stack: vec![VxMatrix3x3::identity()],
-			vertices: vec![],
-			sdf_verts: vec![],
-			tex_verts: vec![],
-			text_data: vec![],
+			vertices: Vec::new(),
+			sdf_verts: Vec::new(),
+			tex_verts: Vec::new(),
+			text_data: Vec::new(),
 		}
 	}
 

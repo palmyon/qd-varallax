@@ -170,7 +170,10 @@ QD-Varallax is distributed under the terms of both the Apache License (Ver-2.0) 
 Feel free to choose whichever license suits your needs best and use it however you like!
 
 # Extra
-I’m thinking of switching the hit detection from a pure WideBVH implementation to a TLAS/BLAS setup. WideBVH on its own doesn’t handle dynamic objects very well, so I figured it’s not really cut out for GUIs.
+2026-06-15: I’m thinking of switching the hit detection from a pure WideBVH implementation to a TLAS/BLAS setup. WideBVH on its own doesn’t handle dynamic objects very well, so I figured it’s not really cut out for GUIs.
+<br>
+2026-07-09: Just dropped a new video! Also, regarding the TLAS/BLAS setup I mentioned earlier, I've decided to go with a HybridBVH(HBVH). Without getting too into the weeds, 
+the plan is to manage things using a flat BVH combined with dedicated BLAS for specific widgets. I'm expecting to heavily cut down on rebuild costs.
 
 <br><br>
 <details>
@@ -328,4 +331,7 @@ QD-Varallaxは、以下のデュアルライセンスのもとで提供されて
 
 # 開発中のおまけ
 2026-06-15: ヒット判定を、純WideBVH実装からTLAS/BLAS実装に変えようと思います。BVH単体だと動体に弱かったので、GUIに不向きだな～と思って。
+<br>
+2026-07-09: 動画を出しました。あと、上のTLAS/BLASの話について、HBVH(HybridBVH)にすることにしました。詳細は省きますが、フラットなBVHと、特定のウィジェット限定のBVH(BLAS)で管理することで、
+再構築コストを激減させる算段です。
 </details>

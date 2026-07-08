@@ -48,16 +48,16 @@ impl From<[f32; 2]> for VxVec2 {
 impl VxVec2 {
 	//constructors
 	#[inline]
-	pub fn new(x: f32, y: f32) -> Self { Self { x, y } }
+	pub const fn new(x: f32, y: f32) -> Self { Self { x, y } }
 	#[inline]
-	pub fn from_i32(x: i32, y: i32) -> Self {
+	pub const fn from_i32(x: i32, y: i32) -> Self {
 		Self {
 			x: x as f32,
 			y: y as f32,
 		}
 	}
 	#[inline]
-	pub fn from_u32(x: u32, y: u32) -> Self {
+	pub const fn from_u32(x: u32, y: u32) -> Self {
 		Self {
 			x: x as f32,
 			y: y as f32,
@@ -236,11 +236,11 @@ impl VxSize {
 	//constructs
 	//From実装以外にも一応実装
 	#[inline]
-	pub fn new(w: f32, h: f32) -> Self { Self { w, h } }
+	pub const fn new(w: f32, h: f32) -> Self { Self { w, h } }
 	#[inline]
-	pub fn from_i32(w: i32, h: i32) -> Self { Self { w: w as f32, h: h as f32 } }
+	pub const fn from_i32(w: i32, h: i32) -> Self { Self { w: w as f32, h: h as f32 } }
 	#[inline]
-	pub fn from_u32(w: u32, h: u32) -> Self { Self { w: w as f32, h: h as f32 } }
+	pub const fn from_u32(w: u32, h: u32) -> Self { Self { w: w as f32, h: h as f32 } }
 	#[inline]
 	pub fn from_vec2(vector: VxVec2) -> Self { Self { w: vector.x(), h: vector.y() } }
 
@@ -370,7 +370,7 @@ impl From<[i32; 4]> for VxRect {
 
 impl VxRect {
 	#[inline]
-	pub fn new(x: f32, y: f32, w: f32, h: f32) -> Self {
+	pub const fn new(x: f32, y: f32, w: f32, h: f32) -> Self {
 		Self {
 			pos: VxVec2::new(x, y),
 			size: VxSize::new(w, h),

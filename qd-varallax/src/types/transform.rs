@@ -327,7 +327,7 @@ impl VxMatrix4x4 {
 			]
 		}
 	}
-
+	#[inline]
 	pub fn matrix(&self) -> [[f32; 4]; 4] {
 		self.matrix
 	}
