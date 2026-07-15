@@ -1,11 +1,9 @@
 use winit::window::WindowId;
 
-use crate::{abstractions::{abstract_windows::VxWindowBuilder}, types::geometry::{VxSize, VxVec2}};
+use crate::{abstractions::abstract_windows::VxWindowBuilder, types::{geometry::{VxSize, VxVec2}, input::{VxKey, VxMouseButton}}};
 
 
-pub type VxKey = winit::keyboard::KeyCode;
-pub type VxMouseButton = winit::event::MouseButton;
-
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub struct VxMouseEvent {
 	/// イベント発生場所(絶対座標)
 	pos: VxVec2,
@@ -32,6 +30,7 @@ impl VxMouseEvent {
 	pub fn wheel_delta(&self) -> VxVec2 { self.wheel_delta }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct VxKeyEvent {
 	key: VxKey,
 	/// 押されたならTrue, 離れたならFalse
@@ -52,6 +51,7 @@ impl VxKeyEvent {
 	pub fn is_pressed(&self) -> bool { self.is_pressed }
 }
 
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub struct VxWindowEvent {
 	size: VxSize,
 }

@@ -32,14 +32,38 @@ impl std::ops::MulAssign<f32> for VxVec2 {
 }
 impl From<(f32, f32)> for VxVec2 {
 	#[inline]
-	fn from(value: (f32, f32)) -> Self {
-		Self::new(value.0, value.1)
+	fn from((x, y): (f32, f32)) -> Self {
+		Self::new(x, y)
 	}
 }
 impl From<[f32; 2]> for VxVec2 {
 	#[inline]
-	fn from(value: [f32; 2]) -> Self {
-		Self::new(value[0], value[1])
+	fn from([x, y]: [f32; 2]) -> Self {
+		Self::new(x, y)
+	}
+}
+impl From<(i32, i32)> for VxVec2 {
+	#[inline]
+	fn from((x, y): (i32, i32)) -> Self {
+		Self::from_i32(x, y)
+	}
+}
+impl From<[i32; 2]> for VxVec2 {
+	#[inline]
+	fn from([x, y]: [i32; 2]) -> Self {
+		Self::from_i32(x, y)
+	}
+}
+impl From<(u32, u32)> for VxVec2 {
+	#[inline]
+	fn from((x, y): (u32, u32)) -> Self {
+		Self::from_u32(x, y)
+	}
+}
+impl From<[u32; 2]> for VxVec2 {
+	#[inline]
+	fn from([x, y]: [u32; 2]) -> Self {
+		Self::from_u32(x, y)
 	}
 }
 
@@ -101,9 +125,6 @@ impl VxVec2 {
 			Self::default()
 		}
 	}
-	/// このベクトルからのp2への角度を計算
-	/// # Returns
-	/// `f32(radian)` ラジアン度
 	#[inline]
 	pub fn angle_to(&self, p2: Self) -> f32 {
 		let diff_x = p2.x() - self.x();
@@ -188,8 +209,10 @@ pub struct VxSize {
 	h: f32,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Hash)]
 pub enum VxAspectMode {
 	IgnoreAspectRatio,
+	#[default]
 	KeepAspectRatio,
 	KeepAspectRatioByExpanding,
 }
@@ -660,18 +683,23 @@ pub struct VxRectR {
 }
 
 impl VxRectR {
+	#[inline]
 	pub fn new(rect: VxRect, corner_radius: f32) -> Self {
 		Self { rect, corner_radius }
 	}
 
 	// getter
+	#[inline]
 	pub fn rect(&self) -> VxRect { self.rect }
+	#[inline]
 	pub fn corner_radius(&self) -> f32 { self.corner_radius }
 
 	// setter
+	#[inline]
 	pub fn set_rect(&mut self, rect: VxRect) {
 		self.rect = rect;
 	}
+	#[inline]
 	pub fn set_corner_radius(&mut self, corner_radius: f32) {
 		self.corner_radius = corner_radius;
 	}

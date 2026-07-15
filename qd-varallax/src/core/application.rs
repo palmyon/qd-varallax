@@ -21,19 +21,10 @@ use crate::{
 	abstractions::abstract_windows::{
 		VxWindow,
 		VxWindowStats
-	},
-	core::{
-		resource::VxAppResource, vx_event::{
-			VxEvent,
-			VxKeyEvent,
-			VxMouseEvent,
-			VxWindowEvent
-		}
-	},
-	types::geometry::{
+	}, core::resource::VxAppResource, types::{event::{VxEvent, VxKeyEvent, VxMouseEvent, VxWindowEvent}, geometry::{
 			VxSize,
 			VxVec2
-		}
+		}}
 };
 
 
@@ -41,10 +32,9 @@ struct VxAppHandler {
 	resources: Option<VxAppResource>,
 	windows: HashMap<WindowId, Box<dyn VxWindow>>,
 	init_windows: Vec<Box<dyn VxWindow>>,
-
 	last_mouse_pos: VxVec2,
 	wheel_pixel_amount: f32,
-	proxy: EventLoopProxy<VxEvent>
+	proxy: EventLoopProxy<VxEvent>,
 }
 
 impl ApplicationHandler<VxEvent> for VxAppHandler {
@@ -58,21 +48,11 @@ impl ApplicationHandler<VxEvent> for VxAppHandler {
 
 		let Some(resource) = &self.resources else { return; };
 		
-		for mut wndw in self.init_windows.drain(..) {
-			let attr = wndw.create_window_attr();
-			if let Ok(window) = event_loop.create_window(attr) {
-				let id = window.id();
-				let stats = VxWindowStats::new(&resource.gpu, window, self.proxy.clone());
-				wndw.set_stats(stats);
-				wndw.init_event();
-				if let Some(s) = wndw.stats_mut() {
-					s.finalize_init();
-				}
-
-				self.windows.insert(id, wndw);
-				}
-			}
+		for window in std::mem::take(&mut self.init_windows) {
+			let Some((id, w)) = Self::create_window(event_loop, resource, window, self.proxy.clone()) else { continue; };
+			self.windows.insert(id, w);
 		}
+	}
 
 	fn window_event(
 			&mut self,
@@ -188,30 +168,56 @@ impl ApplicationHandler<VxEvent> for VxAppHandler {
 				}
 			},
 			VxEvent::ShowEvent { builder } => {
-				let mut wndw = builder.build();
+				let window = builder.build();
 
-				if let Ok(window) = event_loop.create_window(wndw.create_window_attr()) {
-					let Some(resources) = &self.resources else { return; };
-					let id = window.id();
-					let stats = VxWindowStats::new(&resources.gpu, window, self.proxy.clone());
-					wndw.set_stats(stats);
-					wndw.init_event();
-					if let Some(s) = wndw.stats_mut() {
-						s.finalize_init();
-					}
+				let Some(res) = &self.resources else {
+					self.init_windows.push(window);
+					return;
+				};
 
-					self.windows.insert(id, wndw);
-				}
+				let Some((id, w)) = Self::create_window(event_loop, res, window, self.proxy.clone()) else { return; };
+				self.windows.insert(id, w);
 			}
 			_ => {}
 		}
 	}
-	fn about_to_wait(&mut self, _: &winit::event_loop::ActiveEventLoop) {
+	fn about_to_wait(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
+		let mut has_immediate = false;
 		for window in self.windows.values_mut() {
-			if let Some(stat) = window.stats_mut() {
-				stat.check_dirty();
+			if window.has_immediate() {
+				has_immediate = true;
+				if let Some(stat) = window.stats_mut() {
+					stat.set_dirty(true);
+					stat.check_dirty();
+				}
+			} else {
+				if let Some(stat) = window.stats_mut() {
+					stat.check_dirty();
+				}
 			}
 		}
+		let flow = if has_immediate { winit::event_loop::ControlFlow::Poll } else { winit::event_loop::ControlFlow::Wait };
+		event_loop.set_control_flow(flow);
+	}
+}
+
+impl VxAppHandler {
+	pub(crate) fn create_window(
+		event_loop: &winit::event_loop::ActiveEventLoop,
+		res: &VxAppResource,
+		mut window: Box<dyn VxWindow>,
+		proxy: EventLoopProxy<VxEvent>,
+	) -> Option<(WindowId, Box<dyn VxWindow>)> {
+		let attr = window.create_window_attr();
+		let winit_window = event_loop.create_window(attr).ok()?;
+		let id = winit_window.id();
+		let stats = VxWindowStats::new(&res.gpu, winit_window, proxy);
+		window.set_stats(stats);
+		window.init_event();
+		if let Some(s) = window.stats_mut() {
+			s.finalize_init();
+		}
+		Some((id, window))
 	}
 }
 
@@ -234,6 +240,7 @@ impl VxApplication {
 				resources: None,
 				windows: HashMap::new(),
 				init_windows: Vec::new(),
+
 				last_mouse_pos: VxVec2::default(),
 				wheel_pixel_amount: 15.0,
 				proxy

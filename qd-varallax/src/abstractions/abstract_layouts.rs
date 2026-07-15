@@ -1,4 +1,4 @@
-use crate::types::geometry::VxVec2;
+use crate::types::geometry::{VxSize, VxVec2};
 
 /// ## QD-Varallax> abstracts> layouts> VxAlignment
 /// An enum for parent-child widget relative alignment.
@@ -25,4 +25,26 @@ pub enum VxAlignment {
 	RightBottom,
 	/// Aligns the child using relative `pos` with the parents `left-center` point.
 	CustomAlignment { pos: VxVec2 },
+}
+
+#[derive(Clone, Copy)]
+pub struct VxImmediateLayoutContext {
+	cursor: VxVec2,
+	available_size: VxSize,
+}
+impl VxImmediateLayoutContext {
+	pub const fn new(available_size: VxSize) -> Self {
+		Self {
+			cursor: VxVec2::new(0.0, 0.0),
+			available_size,
+		}
+	}
+	#[inline]
+	pub const fn cursor(&self) -> VxVec2 {
+		self.cursor
+	}
+	#[inline]
+	pub const fn set_cursor(&mut self, cursor: VxVec2) {
+		self.cursor = cursor;
+	}
 }

@@ -8,4 +8,4 @@ pub mod resource;
 pub mod scene;
 pub mod signal;
 pub mod systems;
-pub mod vx_event;
+pub mod immediate;

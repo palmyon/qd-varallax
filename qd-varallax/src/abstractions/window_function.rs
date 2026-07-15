@@ -8,10 +8,7 @@ use winit::{
 };
 
 use crate::{
-	abstractions::abstract_windows::{VxWindowBuilder, VxWindowLayer}
-	,
-	core::vx_event::VxEvent,
-	types::geometry::VxSize
+	abstractions::abstract_windows::{VxWindowBuilder, VxWindowLayer}, types::{event::VxEvent, geometry::VxSize}
 };
 
 pub(crate) struct VxWindowFunctions;

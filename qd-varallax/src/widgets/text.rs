@@ -2,14 +2,11 @@ use vx_macro::VxWidgetDerive;
 
 use crate::{
 	abstractions::abstract_widgets::{
-		VxWidget, VxWidgetId, VxWidgetStats, VxWidgetInternal
-	},
-	core::glyph::VxFont,
-	types::{
+		VxDirtyFlag, VxWidget, VxWidgetId, VxWidgetInternal, VxWidgetStats
+	}, core::glyph::VxFont, types::{
 		color::VxColor,
 		geometry::VxRect
-	},
-	vx_widget_signals,
+	}, vx_widget_signals,
 };
 
 vx_widget_signals!(pub struct VxTextSignals {
@@ -78,6 +75,6 @@ impl VxTextWidget {
 		self.change_bounding_rect = true;
 		let s = self.signals.text_changed.clone();
 		s.emit(self, &self.text.clone());
-		self.set_dirty(true);
+		self.set_dirty_flag(VxDirtyFlag::Repaint);
 	}
 }

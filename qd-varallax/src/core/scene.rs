@@ -1,38 +1,23 @@
+use ahash::AHashMap;
+
 use crate::{
 	abstractions::{
-		abstract_layouts::{
-			VxAlignment
-		},
-		abstract_widgets::{
-			VxWidget,
-			VxWidgetHandler,
-			VxWidgetId
+		abstract_layouts::VxAlignment, abstract_widgets::{
+			VxDirtyFlag, VxSpatialHierarchyFlag, VxWidget, VxWidgetHandler, VxWidgetId
 		}
-	},
-	core::{
-		spatial_index::VxSpatialIndex,
-		resource::VxAppResource,
-		vx_event::{
-			VxEventResult,
-			VxKeyEvent,
-			VxMouseEvent
-		}
-	},
-	painter::painter::VxPainter,
-	types::{
-		gen_vector::VxGenVector,
-		geometry::{
+	}, core::{
+		resource::VxAppResource, spatial_index::VxSpatialIndex
+	}, painter::painter::VxPainter, types::{
+		event::{VxEventResult, VxKeyEvent, VxMouseEvent}, gen_vector::VxGenVector, geometry::{
 			VxRect,
 			VxSize,
 			VxVec2
-		},
-		transform::VxTransform
-	},
-	utils::convert::VxUtilConverter
+		}, input::VxInputState, render_commands::{VxDirtyCheckResult, VxRenderMode}, transform::VxTransform
+	}, utils::VxUtilConverter,
 };
 
 
-pub struct VxScene {
+pub struct VxSceneOld {
 	widgets: VxGenVector<Box<dyn VxWidget>>,
 	top_level_widgets: Vec<VxWidgetId>,
 
@@ -42,11 +27,11 @@ pub struct VxScene {
 	current_hovered_widget: Option<VxWidgetId>,
 }
 
-impl VxScene {
+impl VxSceneOld {
 	pub fn new() -> Self {
 		Self {
 			widgets: VxGenVector::new(),
-			top_level_widgets: vec![],
+			top_level_widgets: Vec::new(),
 			spatial_index: VxSpatialIndex::new(),
 			current_selected_widget: None,
 			current_hovered_widget: None,
@@ -146,9 +131,9 @@ impl VxScene {
 	pub(crate) fn check_dirty(&mut self) -> bool {
 		let mut dirty = false;
 		for (id, widget) in self.widgets.iter_with_id_mut() {
-			if widget.is_dirty() {
+			if widget.dirty_flag() != VxDirtyFlag::Clean {
 				dirty = true;
-				widget.set_dirty(false);
+				widget.set_dirty_flag(VxDirtyFlag::Clean);
 				self.spatial_index.update_at(
 					VxWidgetId::new(id),
 					VxUtilConverter::rect_to_aabb(widget.bounding_rect())
@@ -157,7 +142,7 @@ impl VxScene {
 		}
 
 		if dirty {
-			self.spatial_index.finalize_update();
+			self.spatial_index.optimize_incremental();
 		}
 
 		dirty
@@ -303,6 +288,282 @@ impl VxScene {
 	}
 	pub fn key_release_event(&mut self, event: &VxKeyEvent) -> VxEventResult {
 		let current_id = self.current_selected_widget;
+		self.send_event_to_widget(
+			current_id,
+			event,
+			|w, e| w.key_release_event(e)
+		)
+	}
+}
+
+pub struct VxScene {
+	widgets: VxGenVector<Box<dyn VxWidget>>,
+	top_level_widgets: Vec<VxWidgetId>,
+	current_selected_widgets: Option<VxWidgetId>,
+	current_hovered_widgets: Option<VxWidgetId>,
+
+	flat_spatial_index: VxSpatialIndex,
+	hierarchical_spatial_index: AHashMap<VxWidgetId, VxSpatialIndex>,
+}
+
+impl VxScene {
+	pub fn new() -> Self {
+		Self {
+			widgets: VxGenVector::new(),
+			top_level_widgets: Vec::new(),
+			current_selected_widgets: None,
+			current_hovered_widgets: None,
+			flat_spatial_index: VxSpatialIndex::new(),
+			hierarchical_spatial_index: AHashMap::new(),
+		}
+	}
+	pub fn paint_event(&mut self, res: &mut VxAppResource, painter: &mut VxPainter) {
+		self.top_level_widgets.iter().for_each(|id| {
+			Self::paint_widget(&mut self.widgets, res, painter, id.clone());
+		});
+	}
+	pub fn immediate_paint_event(&mut self, res: &mut VxAppResource, input: &VxInputState, painter: &mut VxPainter) {
+		self.top_level_widgets.iter().for_each(|id| {
+			Self::immediate_paint_widget(&mut self.widgets, res, input, painter, id.clone());
+		});
+	}
+	fn paint_widget(
+		widgets: &mut VxGenVector<Box<dyn VxWidget>>,
+		res: &mut VxAppResource,
+		painter: &mut VxPainter,
+		id: VxWidgetId
+	) {
+		let Some(widget) = widgets.get_mut(id.id()) else { return; };
+		if !widget.is_visible() {
+			return;
+		}
+
+		widget.paint(painter);
+		painter.set_vertex_z_value(widget.z_value());
+
+		for child in widget.children().clone() {
+			Self::paint_widget(widgets, res, painter, child);
+		}
+	}
+	fn immediate_paint_widget(
+		widgets: &mut VxGenVector<Box<dyn VxWidget>>,
+		res: &mut VxAppResource,
+		input: &VxInputState,
+		painter: &mut VxPainter,
+		id: VxWidgetId,
+	) {
+		let Some(widget) = widgets.get_mut(id.id()) else { return; };
+		if !widget.is_visible() {
+			return;
+		}
+
+		widget.immediate_paint(input, painter);
+		painter.set_vertex_z_value(widget.z_value());
+
+		for child in widget.children().clone() {
+			Self::immediate_paint_widget(widgets, res, input, painter, child);
+		}
+	}
+
+	fn find_widget_at(&self, target_spatial_index: &VxSpatialIndex, pos: VxVec2) -> Option<VxWidgetId> {
+		let result = target_spatial_index.hit_test(pos);
+		if result.is_empty() { return None; }
+
+		let res_id = result.into_iter()
+			.filter_map(|id| {
+				let widget = self.widgets.get(id.id())?;
+				if widget.is_visible() && widget.bounding_rect().contains(pos) {
+					Some((widget.z_value(), id))
+				} else {
+					None
+				}
+			})
+			.max_by_key(|(z, _)| *z)
+			.map(|(_, id)| id)?;
+
+		let widget = self.widgets.get(res_id.id())?;
+		if widget.spatial_hierarchy_flag() == VxSpatialHierarchyFlag::Hierarchical {
+			return self.find_widget_at(self.hierarchical_spatial_index.get(&res_id)?, pos);
+		}
+		Some(res_id)
+	}
+
+	pub fn check_dirty(&mut self) -> VxDirtyCheckResult {
+		let mut result = VxDirtyCheckResult::None;
+		let mut has_immediate = false;
+		for (_id, widget) in self.widgets.iter_with_id_mut() {
+			match widget.dirty_flag() {
+				VxDirtyFlag::BoundingRect => {
+					// if widget.spatial_hierarchy_flag() == VxSpatialHierarchyFlag::Hierarchical {
+					// 	let Some(spatial_index) = self.hierarchical_spatial_index.get_mut(&VxWidgetId::new(id)) else { continue; };
+					// 	Self::update_spatial_index(
+					// 		spatial_index,
+					// 		widget
+					// 	);
+					// } else {
+					// 	Self::update_spatial_index(&mut self.flat_spatial_index, widget);
+					// }
+					
+					// テスト用に一旦全部フラット
+					Self::update_spatial_index(&mut self.flat_spatial_index, widget);
+					widget.set_dirty_flag(VxDirtyFlag::Clean);
+					result = VxDirtyCheckResult::All;
+				}
+				VxDirtyFlag::Repaint => {
+					widget.set_dirty_flag(VxDirtyFlag::Clean); 
+					result = VxDirtyCheckResult::All;
+				}
+				// 機能は後々追加
+				_ => {}
+			}
+			match widget.update_mode() {
+				VxRenderMode::Immediate => { has_immediate = true; }
+				_ => {}
+			}
+		}
+		if result == VxDirtyCheckResult::None && has_immediate {
+			result = VxDirtyCheckResult::OnlyImmediate;
+		}
+		result
+	}
+
+	fn update_spatial_index(target_spatial_index: &mut VxSpatialIndex, target_widget: &Box<dyn VxWidget>) {
+		target_spatial_index.update_at(
+			target_widget.widget_id().unwrap(),
+			VxUtilConverter::rect_to_aabb(target_widget.bounding_rect())
+		);
+	}
+
+	pub fn add_widget<W: VxWidget>(&mut self, mut widget: W) -> VxWidgetHandler<W> {
+		let children = widget.stats_mut().children_widgets();
+
+		let id = VxWidgetId::new(self.widgets.insert_with_key(|id | {
+			let widget_id = VxWidgetId::new(id);
+			widget.stats_mut().set_widget_id(widget_id);
+			if widget.parent().is_none() {
+				self.top_level_widgets.push(widget_id);
+			}
+			if widget.spatial_hierarchy_flag() == VxSpatialHierarchyFlag::Hierarchical {
+				self.hierarchical_spatial_index.insert(widget_id, VxSpatialIndex::new());
+			}
+			Box::new(widget)
+		}));
+
+		for mut child in children {
+			child.set_parent(id);
+			let child_id = self.add_widget_box(child);
+			let parent = self.widgets.get_mut(id.id()).expect("VxScene> Critical: Parent widget not found");
+			parent.stats_mut().add_child(child_id);
+		}
+
+		VxWidgetHandler::<W>::new(id)
+	}
+	pub fn add_widget_box(&mut self, mut widget: Box<dyn VxWidget>) -> VxWidgetId {
+		let children = widget.stats_mut().children_widgets();
+		let id = VxWidgetId::new(self.widgets.insert_with_key(|id| {
+			let widget_id = VxWidgetId::new(id);
+			widget.stats_mut().set_widget_id(widget_id);
+			if widget.parent().is_none() {
+				self.top_level_widgets.push(widget_id);
+			}
+			if widget.spatial_hierarchy_flag() == VxSpatialHierarchyFlag::Hierarchical {
+				self.hierarchical_spatial_index.insert(widget_id, VxSpatialIndex::new());
+			}
+			widget
+		}));
+
+		for mut child in children {
+			child.set_parent(id);
+			let child_id = self.add_widget_box(child);
+			let parent = self.widgets.get_mut(id.id()).expect("VxScene> Critical: Parent widget not found");
+			parent.stats_mut().add_child(child_id);
+		}
+
+		id
+	}
+
+	fn send_event_to_widget<E>(
+		&mut self,
+		mut start_id: Option<VxWidgetId>,
+		event: &E,
+		handler: impl Fn(&mut Box<dyn VxWidget>, &E) -> VxEventResult
+	) -> VxEventResult {
+		while let Some(id) = start_id {
+			let Some(widget) = self.widgets.get_mut(id.id()) else { break; };
+			let result = handler(widget, event);
+			if result == VxEventResult::Accept {
+				return VxEventResult::Accept;
+			}
+			start_id = widget.parent();
+		}
+		VxEventResult::Ignore
+	}
+
+	pub fn mouse_press_event(&mut self, event: &VxMouseEvent)  -> VxEventResult {
+		let current_id = self.find_widget_at(&self.flat_spatial_index, event.pos());
+		self.current_selected_widgets = current_id;
+		self.send_event_to_widget(
+			current_id,
+			event,
+			|w, e | w.mouse_press_event(e)
+		)
+	}
+	pub fn mouse_release_event(&mut self, event: &VxMouseEvent) -> VxEventResult {
+		let current_id = self.find_widget_at(&self.flat_spatial_index, event.pos());
+		self.current_selected_widgets = current_id;
+		self.send_event_to_widget(
+			current_id,
+			event,
+			|w, e| w.mouse_release_event(e)
+		)
+	}
+	pub fn mouse_move_event(&mut self, event: &VxMouseEvent) -> VxEventResult {
+		let new_hover_id = self.find_widget_at(&self.flat_spatial_index, event.pos());
+		let old_hover_id = self.current_hovered_widgets;
+
+		if new_hover_id != old_hover_id {
+			if let Some(old_id) = old_hover_id {
+				self.send_event_to_widget(
+					Some(old_id),
+					event,
+					|w, e| w.mouse_leave_event(e)
+				);
+			}
+			if let Some(new_id) = new_hover_id {
+				self.send_event_to_widget(
+					Some(new_id),
+					event,
+					|w, e| w.mouse_enter_event(e)
+				);
+			}
+			self.current_hovered_widgets = new_hover_id;
+		}
+
+		self.send_event_to_widget(
+			new_hover_id,
+			event,
+			|w, e| w.mouse_move_event(e)
+		)
+	}
+	pub fn mouse_wheel_event(&mut self, event: &VxMouseEvent) -> VxEventResult {
+		let current_id = self.find_widget_at(&self.flat_spatial_index, event.pos());
+		self.send_event_to_widget(
+			current_id,
+			event,
+			|w, e| w.mouse_wheel_event(e)
+		)
+	}
+	// KeyboardEvents
+	pub fn key_press_event(&mut self, event: &VxKeyEvent) -> VxEventResult {
+		let current_id = self.current_selected_widgets;
+		self.send_event_to_widget(
+			current_id,
+			event,
+			|w, e| w.key_press_event(e)
+		)
+	}
+	pub fn key_release_event(&mut self, event: &VxKeyEvent) -> VxEventResult {
+		let current_id = self.current_selected_widgets;
 		self.send_event_to_widget(
 			current_id,
 			event,

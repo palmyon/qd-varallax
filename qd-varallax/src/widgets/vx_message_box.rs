@@ -4,14 +4,14 @@ use crate::{
 	abstractions::{
 		abstract_widgets::VxWidget,
 		abstract_windows::{
-			VxWindow, VxWindowAttributes, VxWindowBuilder, VxWindowExt, VxWindowInternal, VxWindowLayer, VxWindowStats
+			VxWindow, VxWindowAttributes, VxWindowExt, VxWindowInternal, VxWindowLayer, VxWindowStats, VxWindowBuilder
 		}
-	}, core::{glyph::VxFont, vx_event::VxEvent}, types::geometry::{
+	}, core::glyph::VxFont, types::{event::VxEvent, geometry::{
 		VxRect,
 		VxRectR,
 		VxSize,
 		VxVec2
-	}, widgets::{
+	}}, widgets::{
 		button::{
 			VxButtonStyle,
 			VxButtonWidget

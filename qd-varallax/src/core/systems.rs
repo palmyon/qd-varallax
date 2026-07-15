@@ -21,13 +21,7 @@ use crate::{
 			VxMtsdfGenerator
 		},
 	},
-	painter::{
-		painter::{
-			VxDrawTextData,
-			VxVertexContainer
-		},
-		tessellate,
-	},
+	painter::tessellate::VxTessellator,
 	types::{
 		color::VxColorU8,
 		gen_vector::{
@@ -40,11 +34,18 @@ use crate::{
 			VxSize,
 			VxVec2
 		},
+		render_commands::{
+			VxDrawTextData, 
+			VxVertexContainer,
+		},
 		texture::{
 			VxImage,
 			VxTexture
 		},
-		vertex::{VxTextureVertex, VxTextVertex},
+		vertex::{
+			VxTextVertex,
+			VxTextureVertex
+		},
 	},
 };
 
@@ -194,10 +195,15 @@ impl VxFontSystem {
 		}
 	}
 
+	pub fn preload_glyphs(&mut self, gpu: &VxGpuResource, font_family: &str, glyphs: &str) {
+		self.ensure_glyphs(gpu, Self::MTSDF_SIZE, VxFont::hash(font_family), glyphs);
+		self.update_bind_group(gpu);
+	}
+
 	pub(crate) fn ensure_glyphs(
 		&mut self,
 		gpu: &VxGpuResource,
-		msdf_size: f32,
+		mtsdf_size: f32,
 		mut font_family: VxFontFamilyHash,
 		chars: &str,
 	) -> VxFontFamilyHash {
@@ -232,7 +238,7 @@ impl VxFontSystem {
 		let mut size_result = VxFontDataGenerator::create_text_bounding_size(
 			&mut self.context,
 			font_data,
-			msdf_size,
+			mtsdf_size,
 			VxMtsdfGenerator::RANGE,
 			&missings,
 		);
@@ -463,7 +469,7 @@ impl VxFontSystem {
 				let w = glyph_info.atlas_rect.width() * scale;
 				let h = glyph_info.atlas_rect.height() * scale;
 
-				let (mut verts, indices) = tessellate::tessellate_text(
+				let (mut verts, indices) = VxTessellator::tessellate_text(
 					VxRect::new(x, y, w, h),
 					cmd.color,
 					glyph_info.uv_rect,
@@ -478,7 +484,9 @@ impl VxFontSystem {
 					v.set_position_vec2(pos);
 				});
 
-				let mut container = VxVertexContainer::new(verts.to_vec(), indices.to_vec());
+				let mut container = VxVertexContainer::new(
+					verts.to_vec(), indices.to_vec()
+				);
 				container.set_z_value(cmd.z_value());
 
 				all_array.push(container);
@@ -495,7 +503,7 @@ impl VxFontSystem {
 	}
 
 	pub(crate) fn debug_atlas(&self, raw_atlas_index: i32) -> VxVertexContainer<VxTextureVertex> {
-		let (vert, index) = tessellate::tessellate_texture(
+		let (vert, index) = VxTessellator::tessellate_texture(
 			VxRect::from_u32(0, 0, 2048, 2048),
 			0xFFFFFF.into(),
 			VxRect::from_i32(0, 0, 1, 1),

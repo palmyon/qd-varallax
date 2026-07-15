@@ -9,15 +9,39 @@ use winit::{
 use crate::{
 	abstractions::{
 		abstract_widgets::{
-			VxWidget, VxWidgetHandler, VxWidgetId
-		}, window_function::VxWindowFunctions
-	}, core::{
+			VxWidget, 
+			VxWidgetHandler
+		},
+		window_function::VxWindowFunctions
+	},
+	core::{
 		gpu_resource::VxGpuResource,
 		renderer::VxRenderer,
 		resource::VxAppResource,
 		scene::VxScene,
-		vx_event::{VxEvent, VxEventResult, VxKeyEvent, VxMouseEvent, VxWindowEvent},
-	}, painter::painter::VxPainter, types::{geometry::VxSize, transform::VxMatrix4x4},
+	},
+	painter::painter::VxPainter, 
+	types::{
+		event::{
+			VxEvent,
+			VxEventResult,
+			VxKeyEvent,
+			VxMouseEvent,
+			VxWindowEvent
+		},
+		geometry::VxSize,
+		input::{
+			VxInputState,
+			VxKeyModifierState,
+			VxKeyboardState,
+			VxMouseState
+		},
+		render_commands::{
+			VxDirtyCheckResult,
+			VxRenderMode
+		},
+		transform::VxMatrix4x4
+	},
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -89,7 +113,9 @@ pub struct VxWindowStats {
 	config: wgpu::SurfaceConfiguration,
 	renderer: VxRenderer,
 	scene: VxScene,
+	input: VxInputState,
 
+	next_update_mode: VxDirtyCheckResult,
 	is_dirty: bool,
 }
 
@@ -118,6 +144,16 @@ impl VxWindowStats {
 
 		let scene = VxScene::new();
 
+		let input = VxInputState::new(
+			VxMouseState::new(
+				Default::default(),
+				Default::default(),
+				Default::default(),
+			),
+			VxKeyboardState::new("".into()),
+			VxKeyModifierState::new(false, false, false),
+		);
+
 		Self {
 			window,
 			proxy,
@@ -125,6 +161,8 @@ impl VxWindowStats {
 			config,
 			renderer,
 			scene,
+			input,
+			next_update_mode: VxDirtyCheckResult::All,
 			is_dirty: true,
 		}
 	}
@@ -143,11 +181,34 @@ impl VxWindowStats {
 				VxMatrix4x4::orthographic(VxSize::from_u32(new_size.width, new_size.height)),
 			);
 		}
+		self.is_dirty = true;
 	}
 	pub fn update_event(&mut self, res: &mut VxAppResource) {
-		let mut painter = VxPainter::new();
-		self.scene.paint_event(res, &mut painter);
+		let input = &self.input;
+		match self.next_update_mode {
+			VxDirtyCheckResult::All => {
+				let mut painter = VxPainter::new();
+				self.scene.paint_event(res, &mut painter);
+				self.scene.immediate_paint_event(res, input, &mut painter);
+				// どうせ全部再描画だしImmediateバッファはクリアするから、同じバッファにまとめる
+				self.take_and_set_vertices_to_renderer(res, &mut painter, VxRenderMode::Retained);
+			}
+			VxDirtyCheckResult::OnlyImmediate => {
+				let mut painter = VxPainter::new();
+				self.scene.immediate_paint_event(res, input, &mut painter);
+				self.take_and_set_vertices_to_renderer(res, &mut painter, VxRenderMode::Immediate);
+			}
+			_ => { return; }
+		}
+		self.next_update_mode = VxDirtyCheckResult::None;
+		
 		res.textures.update_bind_group(&res.gpu);
+
+		self.renderer.render(res, &self.surface);
+	}
+
+	fn take_and_set_vertices_to_renderer(&mut self, res: &mut VxAppResource, painter: &mut VxPainter, render_mode: VxRenderMode) {
+		self.renderer.prepare_render(render_mode);
 
 		let verts = std::mem::take(&mut painter.vertices);
 		let sdf_verts = std::mem::take(&mut painter.sdf_verts);
@@ -155,17 +216,17 @@ impl VxWindowStats {
 		let text_data = std::mem::take(&mut painter.text_data);
 		let text_verts = res.fonts.generate_text_vertices(&res.gpu, text_data);
 
-		// 頂点のみデータを描画
-		self.renderer.set_vertex_vertices(&res.gpu, verts);
-		self.renderer.set_sdf_vertices(&res.gpu, sdf_verts);
-		self.renderer.set_texture_vertices(&res.gpu, tex_verts);
-		self.renderer.set_text_vertices(&res.gpu, text_verts);
-
-		self.renderer.render(res, &self.surface);
+		self.renderer.set_vertex_vertices(&res.gpu, render_mode, verts);
+		self.renderer.set_sdf_vertices(&res.gpu, render_mode, sdf_verts);
+		self.renderer.set_texture_vertices(&res.gpu, render_mode, tex_verts);
+		self.renderer.set_text_vertices(&res.gpu, render_mode, text_verts);
 	}
+
 	pub(crate) fn check_dirty(&mut self) {
-		if self.scene.check_dirty() || self.is_dirty {
-			self.set_dirty(false);
+		let dirty = self.scene.check_dirty();
+		if dirty != VxDirtyCheckResult::None || self.is_dirty {
+			self.next_update_mode = if self.is_dirty { VxDirtyCheckResult::All } else { dirty };
+			self.is_dirty = false;
 			self.window.request_redraw();
 		}
 	}
@@ -179,7 +240,7 @@ impl VxWindowStats {
 	}
 
 	pub fn finalize_init(&mut self) {
-		self.scene.refresh_spatial_index();
+		// self.scene.refresh_spatial_index();
 	}
 }
 
@@ -198,101 +259,13 @@ pub trait VxWindow: VxWindowInternal {
 	/// Called during window initalization.
 	/// #### Note: [`VxWindowInternal::stats`] will always return `Some(stats)` when this event is triggered.
 	fn init_event(&mut self) {}
+	fn has_immediate(&self) -> bool { false }
 
 	fn update_event(&mut self, res: &mut VxAppResource) {
 		if let Some(stat) = self.stats_mut() {
 			stat.update_event(res);
 		}
 	}
-
-	//wrappers
-	fn send_widget_to_scene(&mut self, widget: Box<dyn VxWidget>) -> Option<VxWidgetId> {
-		if let Some(stats) = self.stats_mut() {
-			Some(stats.scene.add_widget(widget))
-		} else {
-			None
-		}
-	}
-	fn set_fixed_size(&self, size: Option<VxSize>) {
-		if let Some(s) = self.stats() {
-			VxWindowFunctions::set_fixed_size(&s.window, size);
-		}
-	}
-	fn set_minimum_size(&self, size: Option<VxSize>) {
-		if let Some(s) = self.stats() {
-			VxWindowFunctions::set_minimum_size(&s.window, size);
-		}
-	}
-	fn set_maximum_size(&self, size: Option<VxSize>) {
-		if let Some(s) = self.stats() {
-			VxWindowFunctions::set_maximum_size(&s.window, size);
-		}
-	}
-	fn set_window_resizable(&self, resizable: bool) {
-		if let Some(s) = self.stats() {
-			VxWindowFunctions::set_window_resizable(&s.window, resizable);
-		}
-	}
-
-	fn set_transparent(&self, transparent: bool) {
-		if let Some(s) = self.stats() {
-			VxWindowFunctions::set_transparent(&s.window, transparent);
-		}
-	}
-
-	fn show_fullscreen(&self) {
-		if let Some(s) = self.stats() {
-			VxWindowFunctions::show_fullscreen(&s.window);
-		}
-	}
-
-	fn show_normal(&self) {
-		if let Some(s) = self.stats() {
-			VxWindowFunctions::show_normal(&s.window);
-		}
-	}
-
-	fn is_fullscreen(&self) -> bool {
-		if let Some(s) = self.stats() {
-			return VxWindowFunctions::is_fullscreen(&s.window);
-		}
-		false
-	}
-
-	fn close(&self) {
-		let res = self.close_event();
-		if res == VxEventResult::Ignore {
-			return;
-		}
-		if let Some(s) = self.stats() {
-			VxWindowFunctions::close(&s.window, &s.proxy);
-		}
-	}
-
-	fn show(&self, window: Box<dyn VxWindowBuilder>) {
-		if let Some(stat) = self.stats() {
-			VxWindowFunctions::show(window, &stat.proxy);
-		}
-	}
-
-	fn update(&mut self) {
-		if let Some(stat) = self.stats_mut() {
-			stat.set_dirty(true);
-		}
-	}
-
-	fn set_window_layer(&self, layer: VxWindowLayer) {
-		if let Some(s) = self.stats() {
-			VxWindowFunctions::set_window_layer(&s.window, layer);
-		}
-	}
-
-	fn set_window_minimizable(&self, minimizable: bool) {
-		if let Some(s) = self.stats() {
-			VxWindowFunctions::set_window_minimizable(&s.window, minimizable);
-		}
-	}
-
 	// Events
 	fn chain_resize_event(&mut self, gpu: &VxGpuResource, new_size: winit::dpi::PhysicalSize<u32>) {
 		if let Some(stat) = self.stats_mut() {
@@ -382,22 +355,95 @@ pub trait VxWindow: VxWindowInternal {
 }
 
 pub trait VxWindowExt: VxWindow {
-	fn add_widget<W: VxWidget + 'static>(&mut self, widget: W) -> Option<VxWidgetHandler<W>> {
-		let id = self.send_widget_to_scene(Box::new(widget))?;
-		Some(VxWidgetHandler::<W>::new(id))
-	}
-	fn get_widget<W: VxWidget>(&self, handler: VxWidgetHandler<W>) -> Option<&W> {
-		if let Some(stats) = self.stats() {
-			stats.scene.get_widget(handler)
+	fn add_widget<W: VxWidget>(&mut self, widget: W) -> Option<VxWidgetHandler<W>> {
+		if let Some(stats) = self.stats_mut() {
+			return Some(stats.scene.add_widget(widget));
 		} else {
-			None
+			return None;
 		}
 	}
-	fn get_widget_mut<W: VxWidget>(&mut self, handler: VxWidgetHandler<W>) -> Option<&mut W> {
-		if let Some(stats) = self.stats_mut() {
-			stats.scene.get_widget_mut(handler)
-		} else {
-			None
+	// fn get_widget<W: VxWidget>(&self, handler: VxWidgetHandler<W>) -> Option<&W> {
+	// 	if let Some(stats) = self.stats() {
+	// 		stats.scene.get_widget(handler)
+	// 	} else {
+	// 		None
+	// 	}
+	// }
+	// fn get_widget_mut<W: VxWidget>(&mut self, handler: VxWidgetHandler<W>) -> Option<&mut W> {
+	// 	if let Some(stats) = self.stats_mut() {
+	// 		stats.scene.get_widget_mut(handler)
+	// 	} else {
+	// 		None
+	// 	}
+	// }
+	fn set_fixed_size(&self, size: Option<VxSize>) {
+		if let Some(s) = self.stats() {
+			VxWindowFunctions::set_fixed_size(&s.window, size);
+		}
+	}
+	fn set_minimum_size(&self, size: Option<VxSize>) {
+		if let Some(s) = self.stats() {
+			VxWindowFunctions::set_minimum_size(&s.window, size);
+		}
+	}
+	fn set_maximum_size(&self, size: Option<VxSize>) {
+		if let Some(s) = self.stats() {
+			VxWindowFunctions::set_maximum_size(&s.window, size);
+		}
+	}
+	fn set_window_resizable(&self, resizable: bool) {
+		if let Some(s) = self.stats() {
+			VxWindowFunctions::set_window_resizable(&s.window, resizable);
+		}
+	}
+	fn set_transparent(&self, transparent: bool) {
+		if let Some(s) = self.stats() {
+			VxWindowFunctions::set_transparent(&s.window, transparent);
+		}
+	}
+	fn show_fullscreen(&self) {
+		if let Some(s) = self.stats() {
+			VxWindowFunctions::show_fullscreen(&s.window);
+		}
+	}
+	fn show_normal(&self) {
+		if let Some(s) = self.stats() {
+			VxWindowFunctions::show_normal(&s.window);
+		}
+	}
+	fn is_fullscreen(&self) -> bool {
+		if let Some(s) = self.stats() {
+			return VxWindowFunctions::is_fullscreen(&s.window);
+		}
+		false
+	}
+	fn close(&self) {
+		let res = self.close_event();
+		if res == VxEventResult::Ignore {
+			return;
+		}
+		if let Some(s) = self.stats() {
+			VxWindowFunctions::close(&s.window, &s.proxy);
+		}
+	}
+	fn show(&self, window: Box<dyn VxWindowBuilder>) {
+		if let Some(stat) = self.stats() {
+			VxWindowFunctions::show(window, &stat.proxy);
+		}
+	}
+	fn update(&mut self) {
+		if let Some(stat) = self.stats_mut() {
+			stat.set_dirty(true);
+		}
+	}
+	fn set_window_layer(&self, layer: VxWindowLayer) {
+		if let Some(s) = self.stats() {
+			VxWindowFunctions::set_window_layer(&s.window, layer);
+		}
+	}
+	fn set_window_minimizable(&self, minimizable: bool) {
+		if let Some(s) = self.stats() {
+			VxWindowFunctions::set_window_minimizable(&s.window, minimizable);
 		}
 	}
 }

@@ -21,6 +21,7 @@ impl VxAppResource {
 		let mut fonts = VxFontSystem::new(&gpu);
 
 		fonts.register_font("kokumr", include_bytes!("../../../qd-varallax/src/assets/kokumr.TTF"));
+		fonts.preload_glyphs(&gpu, "kokumr", include_str!("../../../qd-varallax/src/assets/pre_load.txt"));
 
 		Self {
 			gpu,

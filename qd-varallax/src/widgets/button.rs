@@ -2,25 +2,12 @@ use vx_macro::VxWidgetDerive;
 
 use crate::{
 	abstractions::{abstract_layouts::VxAlignment, abstract_widgets::{
-		VxWidget,
-		VxWidgetId,
-		VxWidgetInternal,
-		VxWidgetStats
-	}},
-	core::{
-		glyph::VxFont,
-		vx_event::{
-			VxEventResult,
-			VxMouseButton
-		}
-	},
-	types::{color::VxColor, geometry::{
+		VxDirtyFlag, VxWidget, VxWidgetId, VxWidgetInternal, VxWidgetStats
+	}}, core::glyph::VxFont, types::{color::VxColor, event::VxEventResult, geometry::{
 		VxRect,
 		VxRectR,
 		VxVec2
-	}, style::VxSdfStyle},
-	vx_widget_signals,
-	widgets::{text::VxTextWidget, theme::{
+	}, input::VxMouseButton, style::VxSdfStyle}, vx_widget_signals, widgets::{text::VxTextWidget, theme::{
 		VxTheme,
 		VxThemeMode
 	}}
@@ -133,22 +120,22 @@ impl VxWidget for VxButtonWidget {
 		painter.pop_transform();
 	}
 
-	fn mouse_press_event(&mut self, event: &crate::core::vx_event::VxMouseEvent) -> VxEventResult {
+	fn mouse_press_event(&mut self, event: &crate::types::event::VxMouseEvent) -> VxEventResult {
 		if let Some(button) = event.button() {
 			if button != VxMouseButton::Left { return VxEventResult::Ignore }
 		}
 		self.state.set_pressed(true);
-		self.set_dirty(true);
+		self.set_dirty_flag(VxDirtyFlag::Repaint);
 
 		let s = self.signals.pressed.clone();
 		s.emit(self, &event.pos());
 		VxEventResult::Accept
 	}
 
-	fn mouse_release_event(&mut self, event: &crate::core::vx_event::VxMouseEvent) -> VxEventResult {
+	fn mouse_release_event(&mut self, event: &crate::types::event::VxMouseEvent) -> VxEventResult {
 		let s = self.signals.released.clone();
 		s.emit(self, &event.pos());
-		self.set_dirty(true);
+		self.set_dirty_flag(VxDirtyFlag::Repaint);
 
 		if self.state.is_hovered() && self.state.is_pressed() {
 			self.state.set_pressed(false);
@@ -162,19 +149,19 @@ impl VxWidget for VxButtonWidget {
 		}
 	}
 
-	fn mouse_enter_event(&mut self, event: &crate::core::vx_event::VxMouseEvent) -> VxEventResult {
+	fn mouse_enter_event(&mut self, event: &crate::types::event::VxMouseEvent) -> VxEventResult {
 		self.state.set_hovered(true);
-		self.set_dirty(true);
+		self.set_dirty_flag(VxDirtyFlag::Repaint);
 
 		let s = self.signals.hovered.clone();
 		s.emit(self, &event.pos());
 		VxEventResult::Accept
 	}
 
-	fn mouse_leave_event(&mut self, event: &crate::core::vx_event::VxMouseEvent) -> VxEventResult {
+	fn mouse_leave_event(&mut self, event: &crate::types::event::VxMouseEvent) -> VxEventResult {
 		self.state.set_hovered(false);
 		self.state.set_pressed(false);
-		self.set_dirty(true);
+		self.set_dirty_flag(VxDirtyFlag::Repaint);
 
 		self.signals.leaved.clone().emit(self, &event.pos());
 		VxEventResult::Accept

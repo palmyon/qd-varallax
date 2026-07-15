@@ -1,12 +1,13 @@
 use crate::{
 	core::glyph::VxFont,
-	painter::tessellate::{
-		self
-	},
+	painter::tessellate::VxTessellator,
 	types::{
 		color::VxColor,
-		geometry::{
-			VxRect,
+		geometry::VxRect,
+		render_commands::{
+			VxDrawTextData,
+			VxRenderMode,
+			VxVertexContainer
 		},
 		style::VxSdfStyle,
 		texture::VxTexture,
@@ -22,86 +23,7 @@ use crate::{
 	}
 };
 
-pub(crate) struct VxDrawTextData {
-	pub(crate) text: String,
-	pub(crate) font: VxFont,
-	pub(crate) color: VxColor,
-	pub(crate) matrix: VxMatrix3x3,
-	pub(crate) z_value: VxVertexZValue,
-	pub(crate) outline_color: VxColor,
-	pub(crate) outline_width: f32,
-	pub(crate) blur_radius: f32,
-}
 
-impl VxDrawTextData {
-	#[inline]
-	pub(crate) fn new(
-		text: &str,
-		font: VxFont,
-		color: VxColor,
-		matrix: VxMatrix3x3,
-		outline_color: VxColor,
-		outline_width: f32,
-		blur_radius: f32,
-	) -> Self {
-		Self {
-			text: text.into(),
-			font,
-			color,
-			matrix,
-			z_value: VxVertexZValue::Disable,
-			outline_color,
-			outline_width,
-			blur_radius,
-		}
-	}
-	#[inline]
-	pub fn z_value(&self) -> i32 { self.z_value.z_value() }
-	#[inline]
-	pub fn is_z_enable(&self) -> bool { self.z_value != VxVertexZValue::Disable }
-	#[inline]
-	pub fn set_z_value(&mut self, z: i32) {
-		self.z_value = VxVertexZValue::Enable { z };
-	}
-}
-
-#[derive(Clone, Copy, Default, PartialEq, Eq, Hash)]
-pub(crate) enum VxVertexZValue {
-	#[default]
-	Disable,
-	Enable { z: i32 }
-}
-impl VxVertexZValue {
-	pub fn z_value(&self) -> i32 {
-		match self {
-			Self::Disable => 0,
-			Self::Enable { z } => *z,
-		}
-	}
-}
-
-pub(crate) struct VxVertexContainer<T> {
-	pub(crate) verts: Vec<T>,
-	pub(crate) index: Vec<u32>,
-	z_value: VxVertexZValue,
-}
-
-impl<T> VxVertexContainer<T> {
-	pub fn new(verts: Vec<T>, index: Vec<u32>) -> Self {
-		Self { verts, index, z_value: VxVertexZValue::Disable }
-	}
-	pub fn verts(&mut self) -> Vec<T> {
-		std::mem::take(&mut self.verts)
-	}
-	pub fn index(&mut self) -> Vec<u32> {
-		std::mem::take(&mut self.index)
-	}
-	pub fn z_value(&self) -> i32 { self.z_value.z_value() }
-	pub fn is_z_enable(&self) -> bool { self.z_value != VxVertexZValue::Disable }
-	pub fn set_z_value(&mut self, z: i32) {
-		self.z_value = VxVertexZValue::Enable { z };
-	}
-}
 
 pub struct VxPainter {
 	transform_stack: Vec<VxMatrix3x3>,
@@ -179,14 +101,14 @@ impl VxPainter {
 	}
 
 	pub fn draw_rect(&mut self, rect: VxRect, brush: VxColor) {
-		let (mut verts, index) = tessellate::tessellate_rect(rect, brush);
+		let (mut verts, index) = VxTessellator::tessellate_rect(rect, brush);
 		self.apply_current_transform(&mut verts);
 		
 		self.vertices.push(VxVertexContainer::new(verts.to_vec(), index.to_vec()));
 	}
 
 	pub fn draw_sdf_rect(&mut self, sdf_style: VxSdfStyle) {
-		let (mut verts, index) = tessellate::tessellate_sdf_rect(sdf_style);
+		let (mut verts, index) = VxTessellator::tessellate_sdf_rect(sdf_style);
 		self.apply_current_transform_sdf(&mut verts);
 
 		self.sdf_verts.push(VxVertexContainer::new(verts.to_vec(), index.to_vec()));
@@ -194,7 +116,7 @@ impl VxPainter {
 
 	pub fn draw_texture(&mut self, rect: VxRect, base_color: VxColor, tex: &VxTexture) {
 		let Some(id) = tex.id() else { return; };
-		let (mut verts, index) = tessellate::tessellate_texture(
+		let (mut verts, index) = VxTessellator::tessellate_texture(
 			rect,
 			base_color,
 			VxRect::from_i32(0, 0, 1, 1),
@@ -219,7 +141,11 @@ impl VxPainter {
 	) {
 		let matrix = self.current_tranform();
 		self.text_data.push(VxDrawTextData::new(
-			text, font, color, matrix, outline_color, outline_width, blur_radius
+			text, font, color, matrix, outline_color, outline_width, blur_radius, VxRenderMode::Retained
 		));
 	}
+}
+
+pub struct VxImmediatePainter {
+	
 }

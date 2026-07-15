@@ -1,6 +1,16 @@
-use parry2d::{bounding_volume::Aabb, math::Vec2, partitioning::{Bvh, BvhWorkspace}};
+use parry2d::{
+	bounding_volume::Aabb,
+	math::Vec2,
+	partitioning::{
+		Bvh,
+		BvhWorkspace
+	}
+};
 
-use crate::{abstractions::abstract_widgets::VxWidgetId, types::geometry::VxVec2};
+use crate::{
+	abstractions::abstract_widgets::VxWidgetId,
+	types::geometry::VxVec2
+};
 
 
 
@@ -15,7 +25,7 @@ impl VxSpatialIndex {
 		Self {
 			tree: Bvh::new(),
 			workspace: BvhWorkspace::default(),
-			indices: vec![],
+			indices: Vec::new(),
 		}
 	}
 
@@ -27,11 +37,11 @@ impl VxSpatialIndex {
 	}
 
 	pub fn update_at(&mut self, id: VxWidgetId, aabb: Aabb) {
-		self.tree.insert_or_update_partially(aabb, id.id.index as u32, 0.0);
+		self.tree.insert_or_update_partially(aabb, id.id().index as u32, 0.0);
+		self.tree.refit(&mut self.workspace);
 	}
 
-	pub fn finalize_update(&mut self) {
-		self.tree.refit(&mut self.workspace);
+	pub fn optimize_incremental(&mut self) {
 		self.tree.optimize_incremental(&mut self.workspace);
 	}
 

@@ -2,24 +2,30 @@ use crate::{
 	core::{
 		gpu_resource::VxGpuResource,
 		resource::VxAppResource
-	},
-	painter::painter::VxVertexContainer,
-	types::{
-		transform::VxMatrix4x4,
-		vertex::{
+	}, types::{
+		render_commands::{
+			VxDrawLine, VxDrawLineContainer, VxModuleId, VxRenderMode, VxVertexContainer
+		}, transform::VxMatrix4x4, vertex::{
 			VxSdfVertex,
-			VxTextureVertex,
 			VxTextVertex,
+			VxTextureVertex,
 			VxVertex
 		}
 	}
 };
 
+pub(crate) const RETAINED_VERTEX_BUFFER_NAME: &str = "VxRetainedVertexBuffer";
+pub(crate) const IMMEDIATE_VERTEX_BUFFER_NAME: &str = "VxImmediateVertexBuffer";
+pub(crate) const RETAINED_INDEX_BUFFER_NAME: &str = "VxRetainedIndexBuffer";
+pub(crate) const IMMEDIATE_INDEX_BUFFER_NAME: &str = "VxImmediateIndexBuffer";
+
 pub(crate) struct VxRenderModule {
 	pub(crate) module_id: VxModuleId,
 	pub(crate) pipeline: wgpu::RenderPipeline,
-	pub(crate) vertex_buffer: wgpu::Buffer,
-	pub(crate) index_buffer: wgpu::Buffer,
+	pub(crate) retained_vertex_buffer: wgpu::Buffer,
+	pub(crate) retained_index_buffer: wgpu::Buffer,
+	pub(crate) immediate_vertex_buffer: wgpu::Buffer,
+	pub(crate) immediate_index_buffer: wgpu::Buffer,
 	pub(crate) projection_buffer: wgpu::Buffer,
 	pub(crate) projection_bind_group_layout: wgpu::BindGroupLayout,
 	pub(crate) projection_bind_group: wgpu::BindGroup,
@@ -44,23 +50,29 @@ impl VxRenderModule {
 		);
 
 		// create vertex buffer
-		let vertex_buffer = gpu.device.create_buffer(
-			&wgpu::BufferDescriptor {
-				label: Some("VxVertexBuffer"),
-				size: vertex_buffer_size,
-				usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-				mapped_at_creation: false,
-			}
+		let retained_vertex_buffer = Self::create_vertex_buffer(
+			gpu,
+			RETAINED_VERTEX_BUFFER_NAME,
+			vertex_buffer_size
+		);
+
+		let immediate_vertex_buffer = Self::create_vertex_buffer(
+			gpu,
+			IMMEDIATE_VERTEX_BUFFER_NAME,
+			vertex_buffer_size
 		);
 
 		// create index buffer
-		let index_buffer = gpu.device.create_buffer(
-			&wgpu::BufferDescriptor {
-				label: Some("VxIndexBuffer"),
-				size: std::mem::size_of::<[u32; 100]>() as u64,
-				usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
-				mapped_at_creation: false,
-			}
+		let retained_index_buffer = Self::create_index_buffer(
+			gpu,
+			RETAINED_INDEX_BUFFER_NAME,
+			std::mem::size_of::<[u32; 100]>() as u64
+		);
+
+		let immediate_index_buffer = Self::create_index_buffer(
+			gpu,
+			IMMEDIATE_INDEX_BUFFER_NAME,
+			std::mem::size_of::<[u32; 100]>() as u64
 		);
 
 		// create projection buffer
@@ -146,30 +158,82 @@ impl VxRenderModule {
 		Self {
 			module_id,
 			pipeline,
-			vertex_buffer,
-			index_buffer,
+			retained_vertex_buffer,
+			retained_index_buffer,
+			immediate_vertex_buffer,
+			immediate_index_buffer,
 			projection_buffer,
 			projection_bind_group_layout,
 			projection_bind_group,
 		}
 	}
 
-	pub fn update_vertex_buffer(&mut self, gpu: &VxGpuResource, target_size: u64) {
-		self.vertex_buffer = gpu.device.create_buffer(
+	pub fn check_and_update_vertex_buffer(&mut self, gpu: &VxGpuResource, buffer_type: VxRenderMode, target_size: u64) {
+		match buffer_type {
+			VxRenderMode::Retained => {
+				if Self::is_should_extend_buffer_size(&self.retained_vertex_buffer, target_size) {
+					self.retained_vertex_buffer = Self::create_vertex_buffer(
+						gpu,
+						RETAINED_VERTEX_BUFFER_NAME,
+						(target_size as f64 * 1.5) as u64
+					)
+				}
+			}
+			VxRenderMode::Immediate => {
+				if Self::is_should_extend_buffer_size(&self.immediate_vertex_buffer, target_size) {
+					self.immediate_vertex_buffer = Self::create_vertex_buffer(
+						gpu,
+						IMMEDIATE_VERTEX_BUFFER_NAME,
+						(target_size as f64 * 1.5) as u64
+					)
+				}
+			}
+		}
+	}
+
+	pub fn check_and_update_index_buffer(&mut self, gpu: &VxGpuResource, buffer_type: VxRenderMode, target_size: u64) {
+		match buffer_type {
+			VxRenderMode::Retained => {
+				if Self::is_should_extend_buffer_size(&self.retained_index_buffer, target_size) {
+					self.retained_index_buffer = Self::create_index_buffer(
+						gpu,
+						RETAINED_INDEX_BUFFER_NAME,
+						(target_size as f64 * 1.5) as u64
+					)
+				}
+			}
+			VxRenderMode::Immediate => {
+				if Self::is_should_extend_buffer_size(&self.immediate_index_buffer, target_size) {
+					self.immediate_index_buffer = Self::create_index_buffer(
+						gpu,
+						IMMEDIATE_INDEX_BUFFER_NAME,
+						(target_size as f64 * 1.5) as u64
+					)
+				}
+			}
+		}
+	}
+
+	fn is_should_extend_buffer_size(buffer: &wgpu::Buffer, target_size: u64) -> bool {
+		buffer.size() < target_size
+	}
+
+	pub fn create_vertex_buffer(gpu: &VxGpuResource, label: &str, target_size: u64) -> wgpu::Buffer {
+		gpu.device.create_buffer(
 			&wgpu::BufferDescriptor {
-				label: Some("VxVertexBuffer"),
-				size: (target_size as f64 * 1.5) as u64,
+				label: Some(label),
+				size: target_size,
 				usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
 				mapped_at_creation: false,
 			}
 		)
 	}
 
-	pub fn update_index_buffer(&mut self, gpu: &VxGpuResource, target_size: u64) {
-		self.index_buffer = gpu.device.create_buffer(
+	pub fn create_index_buffer(gpu: &VxGpuResource, label: &str, target_size: u64) -> wgpu::Buffer {
+		gpu.device.create_buffer(
 			&wgpu::BufferDescriptor {
-				label: Some("VxIndexBuffer"),
-				size: (target_size as f64 * 1.5) as u64,
+				label: Some(label),
+				size: target_size,
 				usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
 				mapped_at_creation: false,
 			}
@@ -185,53 +249,13 @@ impl VxRenderModule {
 	}
 }
 
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
-pub(crate) enum VxModuleId {
-	VertexModule,
-	SdfModule,
-	TextureModule,
-	TextModule,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct VxDrawLine {
-	module: VxModuleId,
-	index_start: u32,
-	index_count: u32,
-	z_value: i32,
-}
-impl VxDrawLine {
-	pub fn new(module: VxModuleId, index_start: u32, count: u32, z_value: i32) -> Self {
-		Self { module, index_start, index_count: count, z_value }
-	}
-	pub fn module_id(&self) -> u8 {
-		match self.module {
-			VxModuleId::VertexModule => 0,
-			VxModuleId::SdfModule => 1,
-			VxModuleId::TextureModule => 2,
-			VxModuleId::TextModule => 3,
-		}
-	}
-	#[inline]
-	pub fn start(&self) -> u32 {
-		self.index_start
-	}
-	#[inline]
-	pub fn count(&self) -> u32 {
-		self.index_count
-	}
-	#[inline]
-	pub fn z_value(&self) -> i32 {
-		self.z_value
-	}
-}
-
 pub(crate) struct VxRenderer {
 	vertex_module: VxRenderModule,
 	sdf_module: VxRenderModule,
 	texture_module: VxRenderModule,
 	text_module: VxRenderModule,
-	draw_lines: Vec<VxDrawLine>,
+	retained_draw_lines: VxDrawLineContainer,
+	immediate_draw_lines: VxDrawLineContainer,
 }
 
 impl VxRenderer {
@@ -281,7 +305,8 @@ impl VxRenderer {
 			sdf_module,
 			texture_module,
 			text_module,
-			draw_lines: vec![]
+			retained_draw_lines: VxDrawLineContainer::new(),
+			immediate_draw_lines: VxDrawLineContainer::new(),
 		}
 	}
 
@@ -299,6 +324,15 @@ impl VxRenderer {
 			&wgpu::CommandEncoderDescriptor {
 				label: Some("VxRendererEncoder")
 		});
+
+		let mut all_draw_lines: Vec<_> = Vec::with_capacity(
+			self.retained_draw_lines.draw_lines().len() + self.immediate_draw_lines.draw_lines().len()
+		);
+		all_draw_lines.extend_from_slice(self.retained_draw_lines.draw_lines());
+		all_draw_lines.extend_from_slice(&self.immediate_draw_lines.draw_lines_take());
+
+		all_draw_lines.sort_by_key(|line| (line.z_value(), line.module_id()));
+
 		{
 			let mut render_pass = encoder.begin_render_pass(
 				&wgpu::RenderPassDescriptor {
@@ -316,28 +350,20 @@ impl VxRenderer {
 							},
 						}
 					)],
-					depth_stencil_attachment: None,
-					timestamp_writes: None,
-					occlusion_query_set: None,
-					multiview_mask: None,
+					..Default::default()
 				}
 			);
 
-			self.draw_lines.sort_by_key(|line| {
-				(line.z_value(), line.module_id())
-			});
-
 			let mut current_lines: Option<VxDrawLine> = None;
 
-			let lines: Vec<VxDrawLine> = std::mem::take(&mut self.draw_lines);
-
-			for line in lines {
+			for line in all_draw_lines.drain(..) {
 				match current_lines {
-					Some(ref mut batch) if batch.module == line.module => {
-						batch.index_count += line.index_count;
+					Some(ref mut batch) if batch.module_id() == line.module_id()
+					&& batch.render_mode() == line.render_mode() => {
+						batch.set_index_count(batch.count() + line.count());
 					}
 					Some(batch) => {
-						self.exec_draw(&mut render_pass, batch, &res);
+						self.exec_draw(res, &mut render_pass, batch.render_mode(), batch);
 						current_lines = Some(line);
 					}
 					None => {
@@ -346,15 +372,15 @@ impl VxRenderer {
 				}
 			}
 			if let Some(batch) = current_lines {
-				self.exec_draw(&mut render_pass, batch, &res);
+				self.exec_draw(res, &mut render_pass, batch.render_mode(), batch);
 			}
 		}
 		res.gpu.queue.submit(Some(encoder.finish()));
 		frame.present();
 	}
 
-	fn exec_draw(&self, render_pass: &mut wgpu::RenderPass, line: VxDrawLine, res: &VxAppResource) {
-		let module = match line.module {
+	fn exec_draw(&self, res: &VxAppResource, render_pass: &mut wgpu::RenderPass, render_mode: VxRenderMode, line: VxDrawLine) {
+		let module = match line.module() {
 			VxModuleId::VertexModule => &self.vertex_module,
 			VxModuleId::SdfModule => &self.sdf_module,
 			VxModuleId::TextureModule => &self.texture_module,
@@ -363,7 +389,7 @@ impl VxRenderer {
 		render_pass.set_pipeline(&module.pipeline);
 		render_pass.set_bind_group(0, &module.projection_bind_group, &[]);
 
-		match line.module {
+		match line.module() {
 			VxModuleId::TextureModule => {
 				render_pass.set_bind_group(1, &res.textures.module.bind_group, &[]);
 			}
@@ -373,49 +399,90 @@ impl VxRenderer {
 			_ => {}
 		}
 
-		render_pass.set_vertex_buffer(0, module.vertex_buffer.slice(..));
-		render_pass.set_index_buffer(module.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+		let (vertex_buffer, index_buffer) = match render_mode {
+			VxRenderMode::Retained => (&module.retained_vertex_buffer, &module.retained_index_buffer),
+			VxRenderMode::Immediate => (&module.immediate_vertex_buffer, &module.immediate_index_buffer),
+		};
+
+		render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+		render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
 		render_pass.draw_indexed(line.start()..line.start() + line.count(), 0, 0..1);
+	}
+
+	pub fn prepare_render(&mut self, render_mode: VxRenderMode) {
+		match render_mode {
+			VxRenderMode::Retained => self.retained_draw_lines.draw_lines_mut().clear(),
+			VxRenderMode::Immediate => self.immediate_draw_lines.draw_lines_mut().clear(),
+		}
 	}
 
 	// 頂点, indexをバッファに書き込む
 	pub fn set_vertex_vertices(
 		&mut self,
 		gpu: &VxGpuResource,
+		render_mode: VxRenderMode,
 		vertices: Vec<VxVertexContainer<VxVertex>>,
 	) {
-		Self::write_data_to_buffer(gpu, &mut self.vertex_module, vertices, &mut self.draw_lines);
+		let draw_lines_container = match render_mode {
+			VxRenderMode::Retained => &mut self.retained_draw_lines,
+			VxRenderMode::Immediate => &mut self.immediate_draw_lines,
+		};
+		Self::write_data_to_buffer(
+			gpu, &mut self.vertex_module, render_mode, vertices, draw_lines_container
+		);
 	}
 
 	pub fn set_sdf_vertices(
 		&mut self,
 		gpu: &VxGpuResource,
+		render_mode: VxRenderMode,
 		vertices: Vec<VxVertexContainer<VxSdfVertex>>,
 	) {
-		Self::write_data_to_buffer(gpu, &mut self.sdf_module, vertices, &mut self.draw_lines);
+		let draw_lines_container = match render_mode {
+			VxRenderMode::Retained => &mut self.retained_draw_lines,
+			VxRenderMode::Immediate => &mut self.immediate_draw_lines,
+		};
+		Self::write_data_to_buffer(
+			gpu, &mut self.sdf_module, render_mode, vertices, draw_lines_container
+		);
 	}
 
 	pub fn set_texture_vertices(
 		&mut self,
 		gpu: &VxGpuResource,
+		render_mode: VxRenderMode,
 		vertices: Vec<VxVertexContainer<VxTextureVertex>>,
 	) {
-		Self::write_data_to_buffer(gpu, &mut self.texture_module, vertices, &mut self.draw_lines);
+		let draw_lines_container = match render_mode {
+			VxRenderMode::Retained => &mut self.retained_draw_lines,
+			VxRenderMode::Immediate => &mut self.immediate_draw_lines,
+		};
+		Self::write_data_to_buffer(
+			gpu, &mut self.texture_module, render_mode, vertices, draw_lines_container
+		);
 	}
 
 	pub fn set_text_vertices(
 		&mut self,
 		gpu: &VxGpuResource,
+		render_mode: VxRenderMode,
 		vertices: Vec<VxVertexContainer<VxTextVertex>>,
 	) {
-		Self::write_data_to_buffer(gpu, &mut self.text_module, vertices, &mut self.draw_lines);
+		let draw_lines_container = match render_mode {
+			VxRenderMode::Retained => &mut self.retained_draw_lines,
+			VxRenderMode::Immediate => &mut self.immediate_draw_lines,
+		};
+		Self::write_data_to_buffer(
+			gpu, &mut self.text_module, render_mode, vertices, draw_lines_container
+		);
 	}
 
 	fn write_data_to_buffer<T: bytemuck::Pod + bytemuck::Zeroable>(
 		gpu: &VxGpuResource,
 		module: &mut VxRenderModule,
+		render_mode: VxRenderMode,
 		mut vertex_container: Vec<VxVertexContainer<T>>,
-		draw_lines: &mut Vec<VxDrawLine>,
+		draw_lines: &mut VxDrawLineContainer,
 	) {
 		if vertex_container.is_empty() {
 			return;
@@ -430,7 +497,7 @@ impl VxRenderer {
 
 		let mut all_vertices: Vec<T> = Vec::with_capacity(total_vert_len);
 		let mut all_index: Vec<u32> = Vec::with_capacity(total_index_len);
-		draw_lines.reserve(vertex_container.len());
+		draw_lines.draw_lines_mut().reserve(vertex_container.len());
 
 		let mut current_vertex_offset = 0u32;
 
@@ -454,7 +521,8 @@ impl VxRenderer {
 				module.module_id,
 				before_index_len,
 				all_index.len() as u32 - before_index_len,
-				container.z_value()
+				container.z_value(),
+				render_mode,
 			);
 			draw_lines.push(draw_line);
 		}
@@ -464,24 +532,18 @@ impl VxRenderer {
 
 		// buffer size check
 		let vertex_data_size = (all_vertices.len() * std::mem::size_of::<T>()) as u64;
-		if Self::is_over_vertex_buffer_size(&module,vertex_data_size) {
-			module.update_vertex_buffer(&gpu, vertex_data_size);
-		}
+		module.check_and_update_vertex_buffer(gpu, render_mode, vertex_data_size);
 
 		let index_data_size = (all_index.len() * 4) as u64;
-		if Self::is_over_index_buffer_size(&module, index_data_size) {
-			module.update_index_buffer(&gpu, index_data_size);
-		}
+		module.check_and_update_index_buffer(gpu, render_mode, index_data_size);
+
+		let (vertex_buffer, index_buffer) = match render_mode {
+			VxRenderMode::Retained => (&module.retained_vertex_buffer, &module.retained_index_buffer),
+			VxRenderMode::Immediate => (&module.immediate_vertex_buffer, &module.immediate_index_buffer)
+		};
 
 		// write data to buffer
-		gpu.queue.write_buffer(&module.vertex_buffer, 0, vert_data);
-		gpu.queue.write_buffer(&module.index_buffer, 0, index_data);
-	}
-
-	fn is_over_vertex_buffer_size(module: &VxRenderModule, vertex_size: u64) -> bool {
-		vertex_size > module.vertex_buffer.size()
-	}
-	fn is_over_index_buffer_size(module: &VxRenderModule, index_size: u64) -> bool {
-		index_size > module.index_buffer.size()
+		gpu.queue.write_buffer(vertex_buffer, 0, vert_data);
+		gpu.queue.write_buffer(index_buffer, 0, index_data);
 	}
 }
