@@ -10,7 +10,8 @@ mod widgets;
 mod develop_examples;
 
 use crate::{
-	core::application::VxApplication, develop_examples::main_window::DemoWindow,
+	core::application::VxApplication,
+	develop_examples::main_window::DemoWindow,
 };
 
 fn main() {

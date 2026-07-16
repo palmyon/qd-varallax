@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::{
 	abstractions::abstract_layouts::VxAlignment, core::{
 		gpu_resource::VxGpuResource,
@@ -53,15 +55,32 @@ impl<W: VxWidget> VxWidgetHandler<W> {
 	pub fn id(&self) -> VxWidgetId { self.id }
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Default)]
-pub enum VxDirtyFlag {
-	Clean,
-	BoundingRect,
-	Transform,
-	Repaint,
-	Layout,
-	#[default]
-	RebuildAll,
+bitflags::bitflags!{
+	#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Default)]
+	pub struct VxDirtyFlag: u32 {
+		const CLEAN = 0;
+		const BOUNDING_RECT = 1;
+		const TRANSFORM = 2;
+		const REPAINT = 3;
+		const LAYOUT = 4;
+		const REBUILD_ALL = Self::CLEAN.bits() | Self::BOUNDING_RECT.bits() |
+							Self::TRANSFORM.bits() | Self::REPAINT.bits() | Self::LAYOUT.bits();
+	}
+}
+
+#[derive(Clone)]
+pub struct VxDirtyCommandSender {
+	handler: Rc<dyn Fn(VxWidgetId, VxDirtyFlag)>,
+}
+impl VxDirtyCommandSender {
+	pub fn new(handler: impl Fn(VxWidgetId, VxDirtyFlag) + 'static) -> Self {
+		Self {
+			handler: Rc::new(handler),
+		}
+	}
+	pub fn mark_dirty(&self, id: VxWidgetId, dirty_flag: VxDirtyFlag) {
+		(self.handler)(id, dirty_flag);
+	}
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
@@ -76,7 +95,7 @@ pub struct VxWidgetStats {
 	transform: VxTransform,
 	visible: bool,
 	z_value: i32,
-	dirty: VxDirtyFlag,
+	dirty_command_sender: Option<VxDirtyCommandSender>,
 	parent: Option<VxWidgetId>,
 	children: Vec<VxWidgetId>,
 	alignment: VxAlignment,
@@ -93,7 +112,7 @@ impl VxWidgetStats {
 			transform: VxTransform::default(),
 			visible: true,
 			z_value: 0,
-			dirty: VxDirtyFlag::Repaint,
+			dirty_command_sender: None,
 			parent,
 			children: Vec::new(),
 			alignment: VxAlignment::default(),
@@ -104,35 +123,33 @@ impl VxWidgetStats {
 	}
 	// getters
 	#[inline]
-	pub fn widget_id(&self) -> Option<VxWidgetId> { self.id }
+	pub const fn widget_id(&self) -> Option<VxWidgetId> { self.id }
 	#[inline]
-	pub fn parent(&self) -> Option<VxWidgetId> { self.parent }
+	pub const fn parent(&self) -> Option<VxWidgetId> { self.parent }
 	#[inline]
-	pub fn children(&self) -> &Vec<VxWidgetId> { &self.children }
+	pub const fn children(&self) -> &Vec<VxWidgetId> { &self.children }
 	#[inline]
-	pub fn pos(&self) -> VxVec2 { self.transform().pos() }
+	pub const fn pos(&self) -> VxVec2 { self.transform().pos() }
 	#[inline]
-	pub fn angle(&self) -> VxAngle { self.transform().rotation() }
+	pub const fn angle(&self) -> VxAngle { self.transform().rotation() }
 	#[inline]
-	pub fn scale(&self) -> VxSize { self.transform().scale() }
+	pub const fn scale(&self) -> VxSize { self.transform().scale() }
 	#[inline]
-	pub fn center_pivot(&self) -> VxVec2 { self.transform().pivot() }
+	pub const fn center_pivot(&self) -> VxVec2 { self.transform().pivot() }
 	#[inline]
-	pub fn transform(&self) -> VxTransform { self.transform }
+	pub const fn transform(&self) -> VxTransform { self.transform }
 	#[inline]
-	pub fn is_visible(&self) -> bool { self.visible }
+	pub const fn is_visible(&self) -> bool { self.visible }
 	#[inline]
-	pub fn z_value(&self) -> i32 { self.z_value }
+	pub const fn z_value(&self) -> i32 { self.z_value }
 	#[inline]
-	pub fn dirty_flag(&self) -> VxDirtyFlag { self.dirty }
+	pub const fn alignment(&self) -> VxAlignment { self.alignment }
 	#[inline]
-	pub fn alignment(&self) -> VxAlignment { self.alignment }
-	#[inline]
-	pub fn spatial_hierarchy_flag(&self) -> VxSpatialHierarchyFlag {
+	pub const fn spatial_hierarchy_flag(&self) -> VxSpatialHierarchyFlag {
 		self.spatial_hierarchy_flag
 	}
 	#[inline]
-	pub fn update_mode(&self) -> VxRenderMode { self.update_mode }
+	pub const fn update_mode(&self) -> VxRenderMode { self.update_mode }
 	#[inline]
 	pub(crate) fn children_widgets(&mut self) -> Vec<Box<dyn VxWidget>> {
 		std::mem::take(&mut self.children_widgets)
@@ -140,59 +157,67 @@ impl VxWidgetStats {
 
 	// setters
 	#[inline]
-	pub(crate) fn set_widget_id(&mut self, id: VxWidgetId) { self.id = Some(id); }
+	pub(crate) const fn set_widget_id(&mut self, id: VxWidgetId) { self.id = Some(id); }
+	#[inline]
+	pub(crate) fn set_dirty_command_sender(&mut self, sender: VxDirtyCommandSender) {
+		self.dirty_command_sender = Some(sender);
+	}
 	#[inline]
 	pub fn set_pos(&mut self, pos: VxVec2) {
 	self.transform.set_pos(pos);
-		self.set_dirty_flag(VxDirtyFlag::Transform);
+		self.set_dirty_flag(VxDirtyFlag::TRANSFORM);
 	}
 	#[inline]
 	pub fn set_angle(&mut self, angle: VxAngle) {
 		self.transform.set_rotation(angle);
-		self.set_dirty_flag(VxDirtyFlag::Transform);
+		self.set_dirty_flag(VxDirtyFlag::TRANSFORM);
 	}
 	#[inline]
 	pub fn set_scale(&mut self, scale: VxSize) {
 		self.transform.set_scale(scale);
-		self.set_dirty_flag(VxDirtyFlag::Transform);
+		self.set_dirty_flag(VxDirtyFlag::TRANSFORM);
 	}
 	#[inline]
 	pub fn set_center_pivot(&mut self, pivot: VxVec2) {
 		self.transform.set_center_pivot(pivot);
-		self.set_dirty_flag(VxDirtyFlag::Transform);
+		self.set_dirty_flag(VxDirtyFlag::TRANSFORM);
 	}
 	#[inline]
 	pub fn set_transform(&mut self, transform: VxTransform) {
 		self.transform = transform;
-		self.set_dirty_flag(VxDirtyFlag::Transform);
+		self.set_dirty_flag(VxDirtyFlag::TRANSFORM);
 	}
 	#[inline]
-	pub fn set_parent(&mut self, parent: VxWidgetId) { self.parent = Some(parent); }
+	pub const fn set_parent(&mut self, parent: VxWidgetId) { self.parent = Some(parent); }
 	#[inline]
 	pub fn set_visible(&mut self, visible: bool) {
 		self.visible = visible;
-		self.set_dirty_flag(VxDirtyFlag::Repaint);
+		self.set_dirty_flag(VxDirtyFlag::REPAINT);
 	}
 	#[inline]
 	pub fn set_z_value(&mut self, z: i32) {
 		if self.z_value == z { return; }
 		self.z_value = z;
-		self.set_dirty_flag(VxDirtyFlag::Repaint);
+		self.set_dirty_flag(VxDirtyFlag::REPAINT);
 	}
 	#[inline]
-	pub fn set_dirty_flag(&mut self, dirty: VxDirtyFlag) { self.dirty = dirty; }
+	pub fn set_dirty_flag(&self, dirty: VxDirtyFlag) {
+		if let (Some(sender), Some(id)) = (&self.dirty_command_sender, self.id) {
+			sender.mark_dirty(id, dirty);
+		}
+	}
 	#[inline]
 	pub fn set_alignment(&mut self, alignment: VxAlignment) {
 		self.alignment = alignment;
-		self.set_dirty_flag(VxDirtyFlag::Layout);
+		self.set_dirty_flag(VxDirtyFlag::LAYOUT);
 	}
 	#[inline]
 	pub fn set_spatial_hierarchy_flag(&mut self, spatial_hierarchy_flag: VxSpatialHierarchyFlag) {
 		self.spatial_hierarchy_flag = spatial_hierarchy_flag;
-		self.set_dirty_flag(VxDirtyFlag::RebuildAll);
+		self.set_dirty_flag(VxDirtyFlag::REBUILD_ALL);
 	}
 	#[inline]
-	pub fn set_update_mode(&mut self, update_mode: VxRenderMode) {
+	pub const fn set_update_mode(&mut self, update_mode: VxRenderMode) {
 		self.update_mode = update_mode;
 	}
 	#[inline]
@@ -237,8 +262,6 @@ pub trait VxWidget: VxWidgetInternal {
 	fn is_visible(&self) -> bool { self.stats().is_visible() }
 	#[inline]
 	fn z_value(&self) -> i32 { self.stats().z_value() }
-	#[inline]
-	fn dirty_flag(&self) -> VxDirtyFlag { self.stats().dirty_flag() }
 	#[inline]
 	fn spatial_hierarchy_flag(&self) -> VxSpatialHierarchyFlag { self.stats().spatial_hierarchy_flag() }
 	#[inline]

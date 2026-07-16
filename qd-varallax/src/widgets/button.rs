@@ -125,7 +125,7 @@ impl VxWidget for VxButtonWidget {
 			if button != VxMouseButton::Left { return VxEventResult::Ignore }
 		}
 		self.state.set_pressed(true);
-		self.set_dirty_flag(VxDirtyFlag::Repaint);
+		self.set_dirty_flag(VxDirtyFlag::REPAINT);
 
 		let s = self.signals.pressed.clone();
 		s.emit(self, &event.pos());
@@ -135,7 +135,7 @@ impl VxWidget for VxButtonWidget {
 	fn mouse_release_event(&mut self, event: &crate::types::event::VxMouseEvent) -> VxEventResult {
 		let s = self.signals.released.clone();
 		s.emit(self, &event.pos());
-		self.set_dirty_flag(VxDirtyFlag::Repaint);
+		self.set_dirty_flag(VxDirtyFlag::REPAINT);
 
 		if self.state.is_hovered() && self.state.is_pressed() {
 			self.state.set_pressed(false);
@@ -151,7 +151,7 @@ impl VxWidget for VxButtonWidget {
 
 	fn mouse_enter_event(&mut self, event: &crate::types::event::VxMouseEvent) -> VxEventResult {
 		self.state.set_hovered(true);
-		self.set_dirty_flag(VxDirtyFlag::Repaint);
+		self.set_dirty_flag(VxDirtyFlag::REPAINT);
 
 		let s = self.signals.hovered.clone();
 		s.emit(self, &event.pos());
@@ -161,7 +161,7 @@ impl VxWidget for VxButtonWidget {
 	fn mouse_leave_event(&mut self, event: &crate::types::event::VxMouseEvent) -> VxEventResult {
 		self.state.set_hovered(false);
 		self.state.set_pressed(false);
-		self.set_dirty_flag(VxDirtyFlag::Repaint);
+		self.set_dirty_flag(VxDirtyFlag::REPAINT);
 
 		self.signals.leaved.clone().emit(self, &event.pos());
 		VxEventResult::Accept

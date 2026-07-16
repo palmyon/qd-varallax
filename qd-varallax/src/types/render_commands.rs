@@ -107,16 +107,27 @@ impl<T> VxVertexContainer<T> {
 }
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
-pub(crate) enum VxModuleId {
-	VertexModule,
-	SdfModule,
-	TextureModule,
-	TextModule,
+pub struct VxRenderModuleId(pub u32);
+
+impl VxRenderModuleId {
+	pub const AVOID_DUPLICATE_ID_OFFSET: u32 = 20;
+	pub const VERTEX: Self = Self(0);
+	pub const SDF: Self = Self(1);
+	pub const TEXTURE: Self = Self(2);
+	pub const TEXT: Self = Self(3);
+
+	pub const fn custom(id: u32) -> Self {
+		Self(id + Self::AVOID_DUPLICATE_ID_OFFSET)
+	}
+	#[inline]
+	pub const fn id(&self) -> u32 {
+		self.0
+	}
 }
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct VxDrawLine {
-	module: VxModuleId,
+	module: VxRenderModuleId,
 	index_start: u32,
 	index_count: u32,
 	z_value: i32,
@@ -124,44 +135,35 @@ pub(crate) struct VxDrawLine {
 }
 impl VxDrawLine {
 	#[inline]
-	pub fn new(module: VxModuleId, index_start: u32,
+	pub fn new(module: VxRenderModuleId, index_start: u32,
 		count: u32, z_value: i32, render_mode: VxRenderMode
 	) -> Self {
 		Self { module, index_start, index_count: count, z_value, render_mode }
 	}
 	#[inline]
-	pub fn module(&self) -> VxModuleId { self.module }
+	pub fn module_id(&self) -> VxRenderModuleId { self.module }
 	#[inline]
-	pub fn module_id(&self) -> u8 {
-		match self.module {
-			VxModuleId::VertexModule => 0,
-			VxModuleId::SdfModule => 1,
-			VxModuleId::TextureModule => 2,
-			VxModuleId::TextModule => 3,
-		}
-	}
-	#[inline]
-	pub fn start(&self) -> u32 {
+	pub const fn start(&self) -> u32 {
 		self.index_start
 	}
 	#[inline]
-	pub fn count(&self) -> u32 {
+	pub const fn count(&self) -> u32 {
 		self.index_count
 	}
 	#[inline]
-	pub fn z_value(&self) -> i32 {
+	pub const fn z_value(&self) -> i32 {
 		self.z_value
 	}
 	#[inline]
-	pub fn set_index_start(&mut self, val: u32) {
+	pub const fn set_index_start(&mut self, val: u32) {
 		self.index_start = val;
 	}
 	#[inline]
-	pub fn set_index_count(&mut self, val: u32) {
+	pub const fn set_index_count(&mut self, val: u32) {
 		self.index_count = val;
 	}
 	#[inline]
-	pub fn render_mode(&self) -> VxRenderMode {
+	pub const fn render_mode(&self) -> VxRenderMode {
 		self.render_mode
 	}
 }
@@ -180,29 +182,44 @@ impl VxDrawLineContainer {
 		}
 	}
 	#[inline]
-	pub fn is_sorted(&self) -> bool {
+	pub const fn is_sorted(&self) -> bool {
 		self.sorted
 	}
 	#[inline]
-	pub fn draw_lines(&self) -> &Vec<VxDrawLine> {
+	pub const fn draw_lines(&self) -> &Vec<VxDrawLine> {
 		&self.draw_lines
 	}
 	#[inline]
-	pub fn draw_lines_mut(&mut self) -> &mut Vec<VxDrawLine> {
-		&mut self.draw_lines
-	}
-	#[inline]
 	pub fn draw_lines_take(&mut self) -> Vec<VxDrawLine> {
+		self.set_sorted(false);
 		std::mem::take(&mut self.draw_lines)
 	}
 	#[inline]
-	pub fn set_sorted(&mut self, sorted: bool) {
+	pub const fn set_sorted(&mut self, sorted: bool) {
 		self.sorted = sorted;
+	}
+	#[inline]
+	pub fn sort_if_needed(&mut self) {
+		if !self.is_sorted() {
+			self.draw_lines.sort_by_key(|line| {
+				(line.z_value(), line.module_id().id())
+			});
+			self.sorted = true;
+		}
 	}
 	#[inline]
 	pub fn push(&mut self, draw_line: VxDrawLine) {
 		self.draw_lines.push(draw_line);
 		self.sorted = false;
+	}
+	#[inline]
+	pub fn clear(&mut self) {
+		self.draw_lines.clear();
+		self.sorted = false;
+	}
+	#[inline]
+	pub fn reserve(&mut self, additional: usize) {
+		self.draw_lines.reserve(additional);
 	}
 }
 

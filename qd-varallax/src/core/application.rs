@@ -68,11 +68,10 @@ impl ApplicationHandler<VxEvent> for VxAppHandler {
 				window.update_event(resource);
 			}
 			WindowEvent::Resized(size) => {
-				window.chain_resize_event(&resource.gpu, size);
 				let vx_event = VxWindowEvent::new(
 					VxSize::from_u32(size.width, size.height)
 				);
-				window.handle_event(&VxEvent::ResizeEvent { event: vx_event });
+				window.handle_event(&resource.gpu, &VxEvent::ResizeEvent { event: vx_event });
 			},
 			WindowEvent::CloseRequested => {
 				self.windows.remove(&window_id);
@@ -88,14 +87,14 @@ impl ApplicationHandler<VxEvent> for VxAppHandler {
 						Some(button),
 						VxVec2::default(),
 					);
-					window.handle_event(&VxEvent::MousePressEvent { event: vx_event });
+					window.handle_event(&resource.gpu, &VxEvent::MousePressEvent { event: vx_event });
 				} else {
 					let vx_event = VxMouseEvent::new(
 						self.last_mouse_pos,
 						Some(button),
 						VxVec2::default(),
 					);
-					window.handle_event(&VxEvent::MouseReleaseEvent { event: vx_event });
+					window.handle_event(&resource.gpu, &VxEvent::MouseReleaseEvent { event: vx_event });
 				}
 			}
 
@@ -111,7 +110,7 @@ impl ApplicationHandler<VxEvent> for VxAppHandler {
 					None,
 					VxVec2::default(),
 				);
-				window.handle_event(&VxEvent::MouseMoveEvent { event: vx_event });
+				window.handle_event(&resource.gpu, &VxEvent::MouseMoveEvent { event: vx_event });
 			}
 
 			WindowEvent::MouseWheel { delta, .. } => {
@@ -133,7 +132,7 @@ impl ApplicationHandler<VxEvent> for VxAppHandler {
 					None,
 					wheel_delta
 				);
-				window.handle_event(&VxEvent::MouseWheelEvent { event: vx_event });
+				window.handle_event(&resource.gpu, &VxEvent::MouseWheelEvent { event: vx_event });
 			}
 
 			WindowEvent::KeyboardInput { event, .. } => {
@@ -150,10 +149,10 @@ impl ApplicationHandler<VxEvent> for VxAppHandler {
 				};
 				if event.state.is_pressed() {
 					let vx_event = VxKeyEvent::new(code, event.state.is_pressed());
-					window.handle_event(&VxEvent::KeyPressedEvent { event: vx_event });
+					window.handle_event(&resource.gpu, &VxEvent::KeyPressedEvent { event: vx_event });
 				} else {
 					let vx_event = VxKeyEvent::new(code, event.state.is_pressed());
-					window.handle_event(&VxEvent::KeyReleasedEvent { event: vx_event });
+					window.handle_event(&resource.gpu, &VxEvent::KeyReleasedEvent { event: vx_event });
 				}
 			}
 			_ => {},

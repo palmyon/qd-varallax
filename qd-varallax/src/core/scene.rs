@@ -1,9 +1,11 @@
+use std::{cell::RefCell, rc::Rc};
+
 use ahash::AHashMap;
 
 use crate::{
 	abstractions::{
 		abstract_layouts::VxAlignment, abstract_widgets::{
-			VxDirtyFlag, VxSpatialHierarchyFlag, VxWidget, VxWidgetHandler, VxWidgetId
+			VxDirtyCommandSender, VxDirtyFlag, VxSpatialHierarchyFlag, VxWidget, VxWidgetHandler, VxWidgetId
 		}
 	}, core::{
 		resource::VxAppResource, spatial_index::VxSpatialIndex
@@ -128,25 +130,25 @@ impl VxSceneOld {
 			.map(|(_, id)| id)
 	}
 
-	pub(crate) fn check_dirty(&mut self) -> bool {
-		let mut dirty = false;
-		for (id, widget) in self.widgets.iter_with_id_mut() {
-			if widget.dirty_flag() != VxDirtyFlag::Clean {
-				dirty = true;
-				widget.set_dirty_flag(VxDirtyFlag::Clean);
-				self.spatial_index.update_at(
-					VxWidgetId::new(id),
-					VxUtilConverter::rect_to_aabb(widget.bounding_rect())
-				);
-			}
-		}
+	// pub(crate) fn check_dirty(&mut self) -> bool {
+	// 	let mut dirty = false;
+	// 	for (id, widget) in self.widgets.iter_with_id_mut() {
+	// 		if widget.dirty_flag() != VxDirtyFlag::Clean {
+	// 			dirty = true;
+	// 			widget.set_dirty_flag(VxDirtyFlag::Clean);
+	// 			self.spatial_index.update_at(
+	// 				VxWidgetId::new(id),
+	// 				VxUtilConverter::rect_to_aabb(widget.bounding_rect())
+	// 			);
+	// 		}
+	// 	}
 
-		if dirty {
-			self.spatial_index.optimize_incremental();
-		}
+	// 	if dirty {
+	// 		self.spatial_index.optimize_incremental();
+	// 	}
 
-		dirty
-	}
+	// 	dirty
+	// }
 
 	// methods
 	pub fn add_widget(&mut self, mut widget: Box<dyn VxWidget>) -> VxWidgetId {
@@ -301,6 +303,8 @@ pub struct VxScene {
 	top_level_widgets: Vec<VxWidgetId>,
 	current_selected_widgets: Option<VxWidgetId>,
 	current_hovered_widgets: Option<VxWidgetId>,
+	dirty_command_sender: VxDirtyCommandSender,
+	dirty_queue: Rc<RefCell<Vec<(VxWidgetId, VxDirtyFlag)>>>,
 
 	flat_spatial_index: VxSpatialIndex,
 	hierarchical_spatial_index: AHashMap<VxWidgetId, VxSpatialIndex>,
@@ -308,11 +312,17 @@ pub struct VxScene {
 
 impl VxScene {
 	pub fn new() -> Self {
+		let dirty_queue = Rc::new(RefCell::new(Vec::new()));
+		let queue_clone = dirty_queue.clone();
 		Self {
 			widgets: VxGenVector::new(),
 			top_level_widgets: Vec::new(),
 			current_selected_widgets: None,
 			current_hovered_widgets: None,
+			dirty_command_sender: VxDirtyCommandSender::new(move |id, flag| {
+				queue_clone.borrow_mut().push((id, flag));
+			}),
+			dirty_queue,
 			flat_spatial_index: VxSpatialIndex::new(),
 			hierarchical_spatial_index: AHashMap::new(),
 		}
@@ -391,9 +401,13 @@ impl VxScene {
 	pub fn check_dirty(&mut self) -> VxDirtyCheckResult {
 		let mut result = VxDirtyCheckResult::None;
 		let mut has_immediate = false;
-		for (_id, widget) in self.widgets.iter_with_id_mut() {
-			match widget.dirty_flag() {
-				VxDirtyFlag::BoundingRect => {
+		let mut queue = self.dirty_queue.take();
+		for (id, flag) in queue.drain(..) {
+			if flag == VxDirtyFlag::CLEAN { continue; }
+			let widget = self.widgets.get_mut(id.id())
+				.expect("VxScene> Critical: Invalid widget called [set_dirty]");
+			match flag {
+				VxDirtyFlag::BOUNDING_RECT => {
 					// if widget.spatial_hierarchy_flag() == VxSpatialHierarchyFlag::Hierarchical {
 					// 	let Some(spatial_index) = self.hierarchical_spatial_index.get_mut(&VxWidgetId::new(id)) else { continue; };
 					// 	Self::update_spatial_index(
@@ -406,11 +420,9 @@ impl VxScene {
 					
 					// テスト用に一旦全部フラット
 					Self::update_spatial_index(&mut self.flat_spatial_index, widget);
-					widget.set_dirty_flag(VxDirtyFlag::Clean);
 					result = VxDirtyCheckResult::All;
 				}
-				VxDirtyFlag::Repaint => {
-					widget.set_dirty_flag(VxDirtyFlag::Clean); 
+				VxDirtyFlag::REPAINT => {
 					result = VxDirtyCheckResult::All;
 				}
 				// 機能は後々追加
@@ -440,6 +452,7 @@ impl VxScene {
 		let id = VxWidgetId::new(self.widgets.insert_with_key(|id | {
 			let widget_id = VxWidgetId::new(id);
 			widget.stats_mut().set_widget_id(widget_id);
+			widget.stats_mut().set_dirty_command_sender(self.dirty_command_sender.clone());
 			if widget.parent().is_none() {
 				self.top_level_widgets.push(widget_id);
 			}
@@ -463,6 +476,7 @@ impl VxScene {
 		let id = VxWidgetId::new(self.widgets.insert_with_key(|id| {
 			let widget_id = VxWidgetId::new(id);
 			widget.stats_mut().set_widget_id(widget_id);
+			widget.stats_mut().set_dirty_command_sender(self.dirty_command_sender.clone());
 			if widget.parent().is_none() {
 				self.top_level_widgets.push(widget_id);
 			}
@@ -480,6 +494,17 @@ impl VxScene {
 		}
 
 		id
+	}
+
+	pub fn get_widget<W: VxWidget>(&self, widget: VxWidgetHandler<W>) -> Option<&W> {
+		self.widgets.get(widget.id().id())?
+			.as_any()
+			.downcast_ref::<W>()
+	}
+	pub fn get_widget_mut<W: VxWidget>(&mut self, widget: VxWidgetHandler<W>) -> Option<&mut W> {
+		self.widgets.get_mut(widget.id().id())?
+			.as_any_mut()
+			.downcast_mut::<W>()
 	}
 
 	fn send_event_to_widget<E>(

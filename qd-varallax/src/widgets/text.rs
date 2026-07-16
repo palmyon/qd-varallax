@@ -75,6 +75,6 @@ impl VxTextWidget {
 		self.change_bounding_rect = true;
 		let s = self.signals.text_changed.clone();
 		s.emit(self, &self.text.clone());
-		self.set_dirty_flag(VxDirtyFlag::Repaint);
+		self.set_dirty_flag(VxDirtyFlag::REPAINT);
 	}
 }

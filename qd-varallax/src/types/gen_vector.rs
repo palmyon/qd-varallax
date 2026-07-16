@@ -311,7 +311,6 @@ impl <T> VxGenVector<T> {
 	pub fn iter_with_id_mut(&mut self) -> GenIterWithIdMut<'_, T> {
 		GenIterWithIdMut { inner: self.slots.iter_mut().enumerate() }
 	}
-
 	#[inline]
 	pub fn clear(&mut self) {
 		self.slots.clear();

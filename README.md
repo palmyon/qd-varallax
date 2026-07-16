@@ -77,7 +77,7 @@ writing them to a buffer and executing batch rendering.
 * <b><a href = "./qd-varallax/src/abstractions/abstract_windows.rs">VxWindowStats</a></b> - 
 Manages per-window resources serves as the core data for `VxWindow`.
 * <b><a href = "./qd-varallax/src/painter/painter.rs">VxPainter</a></b> - 
-Instantiated per render loop to generate vertices and rendering data for each widget during the `paint` event.
+Manages by `VxWindowStats` to generate vertices and rendering data for each widget during the `paint` event.
 * <b><a href = "./qd-varallax/src/core/scene.rs">VxScene</a></b> - 
 A component that manages widget instances and dispatches various events to `VxWidget`.
 * <b><a href = "./qd-varallax/src/abstractions/abstract_widgets.rs">VxWidget</a></b> - 
@@ -230,7 +230,7 @@ QD-Varallaxでは、大まかに以下の図(英語版と共通)のようなア�
 * <b><a href = "./qd-varallax/src/core/renderer.rs">VxRenderer</a></b> - <a href = "./qd-varallax/src/abstractions/abstract_windows.rs">VxWindowStats</a>から
 受け取った頂点をソートしてバッファに書き込み、バッチング描画を実行するコンポーネント。
 * <b><a href = "./qd-varallax/src/abstractions/abstract_windows.rs">VxWindowStats</a></b> - ウィンドウ単位のリソースを管理し、ウィンドウ本体のデータとして動作する。
-* <b><a href = "./qd-varallax/src/painter/painter.rs">VxPainter</a></b> - 描画ループごとに作成され、paintループでウィジェットの頂点や描画データを作成する。
+* <b><a href = "./qd-varallax/src/painter/painter.rs">VxPainter</a></b> - `VxWindowStats`により管理され、paintループでウィジェットの頂点や描画データを作成する。
 * <b><a href = "./qd-varallax/src/core/scene.rs">VxScene</a></b> - ウィジェット本体を管理し、ウィジェットへ各イベントを配信するコンポーネント。
 * <b><a href = "./qd-varallax/src/abstractions/abstract_widgets.rs">VxWidget</a></b> - 
 ウィジェット本体となるトレイト。このトレイトを継承し、`VxWidgetStats`を持たせることで、ウィジェットとして動作する。

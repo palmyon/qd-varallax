@@ -1,10 +1,13 @@
+use ahash::AHashMap;
+use itertools::Itertools;
+
 use crate::{
 	core::{
 		gpu_resource::VxGpuResource,
 		resource::VxAppResource
 	}, types::{
 		render_commands::{
-			VxDrawLine, VxDrawLineContainer, VxModuleId, VxRenderMode, VxVertexContainer
+			VxDrawLine, VxDrawLineContainer, VxRenderMode, VxRenderModuleId, VxVertexContainer
 		}, transform::VxMatrix4x4, vertex::{
 			VxSdfVertex,
 			VxTextVertex,
@@ -20,7 +23,7 @@ pub(crate) const RETAINED_INDEX_BUFFER_NAME: &str = "VxRetainedIndexBuffer";
 pub(crate) const IMMEDIATE_INDEX_BUFFER_NAME: &str = "VxImmediateIndexBuffer";
 
 pub(crate) struct VxRenderModule {
-	pub(crate) module_id: VxModuleId,
+	pub(crate) module_id: VxRenderModuleId,
 	pub(crate) pipeline: wgpu::RenderPipeline,
 	pub(crate) retained_vertex_buffer: wgpu::Buffer,
 	pub(crate) retained_index_buffer: wgpu::Buffer,
@@ -35,7 +38,7 @@ impl VxRenderModule {
 	pub fn new(
 		gpu: &VxGpuResource,
 		surface_config: &wgpu::SurfaceConfiguration,
-		module_id: VxModuleId,
+		module_id: VxRenderModuleId,
 		shader: &str,
 		bind_group_layout: &[&wgpu::BindGroupLayout],
 		buffers: &[wgpu::VertexBufferLayout],
@@ -121,7 +124,7 @@ impl VxRenderModule {
 		let pipeline_layout = gpu.device.create_pipeline_layout(
 			&wgpu::PipelineLayoutDescriptor {
 				label: Some("VxPipelineLayout"),
-				bind_group_layouts: &layouts.as_slice(),
+				bind_group_layouts: layouts.as_slice(),
 				immediate_size: 0,
 			}
 		);
@@ -250,10 +253,7 @@ impl VxRenderModule {
 }
 
 pub(crate) struct VxRenderer {
-	vertex_module: VxRenderModule,
-	sdf_module: VxRenderModule,
-	texture_module: VxRenderModule,
-	text_module: VxRenderModule,
+	modules: AHashMap<VxRenderModuleId, VxRenderModule>,
 	retained_draw_lines: VxDrawLineContainer,
 	immediate_draw_lines: VxDrawLineContainer,
 }
@@ -263,7 +263,7 @@ impl VxRenderer {
 		let vertex_module = VxRenderModule::new(
 			&gpu,
 			&surface_config,
-			VxModuleId::VertexModule,
+			VxRenderModuleId::VERTEX,
 			include_str!("shader/vertex_shader.wgsl"),
 			&[],
 			&[VxVertex::VERTEXBUFFERLAYOUT],
@@ -273,7 +273,7 @@ impl VxRenderer {
 		let sdf_module = VxRenderModule::new(
 			&gpu,
 			&surface_config,
-			VxModuleId::SdfModule,
+			VxRenderModuleId::SDF,
 			include_str!("shader/sdf_shader.wgsl"),
 			&[],
 			&[VxSdfVertex::VERTEXBUFFERLAYOUT],
@@ -283,7 +283,7 @@ impl VxRenderer {
 		let texture_module = VxRenderModule::new(
 			&gpu,
 			&surface_config,
-			VxModuleId::TextureModule,
+			VxRenderModuleId::TEXTURE,
 			include_str!("shader/texture_shader.wgsl"),
 			&[&gpu.bind_group_layout],
 			&[VxTextureVertex::VERTEXBUFFERLAYOUT],
@@ -293,45 +293,58 @@ impl VxRenderer {
 		let text_module = VxRenderModule::new(
 			&gpu,
 			&surface_config,
-			VxModuleId::TextModule,
+			VxRenderModuleId::TEXT,
 			include_str!("shader/text_shader.wgsl"),
 			&[&gpu.bind_group_layout],
 		&[VxTextVertex::VERTEXBUFFERLAYOUT],
 		(std::mem::size_of::<VxTextVertex>() * 100) as u64
 		);
 
+		let mut modules = AHashMap::new();
+		modules.insert(VxRenderModuleId::VERTEX, vertex_module);
+		modules.insert(VxRenderModuleId::SDF, sdf_module);
+		modules.insert(VxRenderModuleId::TEXTURE, texture_module);
+		modules.insert(VxRenderModuleId::TEXT, text_module);
+
 		Self {
-			vertex_module,
-			sdf_module,
-			texture_module,
-			text_module,
+			modules,
 			retained_draw_lines: VxDrawLineContainer::new(),
 			immediate_draw_lines: VxDrawLineContainer::new(),
 		}
 	}
 
 	pub(crate) fn update_projection(&self, gpu: &VxGpuResource, orthographic: VxMatrix4x4) {
-		self.vertex_module.update_projection(gpu, &orthographic);
-		self.sdf_module.update_projection(gpu, &orthographic);
-		self.texture_module.update_projection(gpu, &orthographic);
-		self.text_module.update_projection(gpu, &orthographic);
+		self.modules.values().for_each(|m| m.update_projection(gpu, &orthographic));
 	}
 
 	pub fn render(&mut self, res: &mut VxAppResource, surface: &wgpu::Surface) {
-		let frame = surface.get_current_texture().expect("VxRenderer> render(): Failed to [get_current_texture]");
+		let Ok(frame) = surface.get_current_texture() else { return; };
 		let view = frame.texture.create_view(&wgpu::TextureViewDescriptor::default());
 		let mut encoder = res.gpu.device.create_command_encoder(
 			&wgpu::CommandEncoderDescriptor {
 				label: Some("VxRendererEncoder")
 		});
 
-		let mut all_draw_lines: Vec<_> = Vec::with_capacity(
-			self.retained_draw_lines.draw_lines().len() + self.immediate_draw_lines.draw_lines().len()
-		);
-		all_draw_lines.extend_from_slice(self.retained_draw_lines.draw_lines());
-		all_draw_lines.extend_from_slice(&self.immediate_draw_lines.draw_lines_take());
+		self.retained_draw_lines.sort_if_needed();
+		self.immediate_draw_lines.sort_if_needed();
 
-		all_draw_lines.sort_by_key(|line| (line.z_value(), line.module_id()));
+		let retained_draw_lines = self.retained_draw_lines.draw_lines();
+		let immediate_draw_lines = self.immediate_draw_lines.draw_lines_take();
+
+		let mut all_draw_lines: Vec<_> = Vec::with_capacity(
+			retained_draw_lines.len() + immediate_draw_lines.len()
+		);
+
+		let retained_iter = retained_draw_lines.iter().copied();
+		let immediate_iter = immediate_draw_lines.into_iter();
+
+		let merged_iter = retained_iter.merge_by(immediate_iter, |r, i| {
+			let r_key = (r.z_value(), r.module_id().id());
+			let i_key = (i.z_value(), i.module_id().id());
+			r_key <= i_key
+		});
+
+		all_draw_lines.extend(merged_iter);
 
 		{
 			let mut render_pass = encoder.begin_render_pass(
@@ -380,20 +393,15 @@ impl VxRenderer {
 	}
 
 	fn exec_draw(&self, res: &VxAppResource, render_pass: &mut wgpu::RenderPass, render_mode: VxRenderMode, line: VxDrawLine) {
-		let module = match line.module() {
-			VxModuleId::VertexModule => &self.vertex_module,
-			VxModuleId::SdfModule => &self.sdf_module,
-			VxModuleId::TextureModule => &self.texture_module,
-			VxModuleId::TextModule => &self.text_module,
-		};
+		let Some(module) = self.modules.get(&line.module_id()) else { return; };
 		render_pass.set_pipeline(&module.pipeline);
 		render_pass.set_bind_group(0, &module.projection_bind_group, &[]);
 
-		match line.module() {
-			VxModuleId::TextureModule => {
+		match line.module_id() {
+			VxRenderModuleId::TEXTURE => {
 				render_pass.set_bind_group(1, &res.textures.module.bind_group, &[]);
 			}
-			VxModuleId::TextModule => {
+			VxRenderModuleId::TEXT => {
 				render_pass.set_bind_group(1, &res.fonts.module.bind_group, &[]);
 			}
 			_ => {}
@@ -411,73 +419,34 @@ impl VxRenderer {
 
 	pub fn prepare_render(&mut self, render_mode: VxRenderMode) {
 		match render_mode {
-			VxRenderMode::Retained => self.retained_draw_lines.draw_lines_mut().clear(),
-			VxRenderMode::Immediate => self.immediate_draw_lines.draw_lines_mut().clear(),
+			VxRenderMode::Retained => self.retained_draw_lines.clear(),
+			VxRenderMode::Immediate => self.immediate_draw_lines.clear(),
 		}
 	}
 
-	// 頂点, indexをバッファに書き込む
-	pub fn set_vertex_vertices(
+	pub fn set_vertices<T>(
 		&mut self,
 		gpu: &VxGpuResource,
 		render_mode: VxRenderMode,
-		vertices: Vec<VxVertexContainer<VxVertex>>,
-	) {
-		let draw_lines_container = match render_mode {
+		vertices_container: Vec<VxVertexContainer<T>>,
+	) where
+		T: VxVertexRenderModuleTarget,
+	{
+		let lines = match render_mode {
 			VxRenderMode::Retained => &mut self.retained_draw_lines,
 			VxRenderMode::Immediate => &mut self.immediate_draw_lines,
 		};
+		let Some(module) = self.modules.get_mut(&T::MODULE_ID) else { return; };
 		Self::write_data_to_buffer(
-			gpu, &mut self.vertex_module, render_mode, vertices, draw_lines_container
+			gpu,
+			module,
+			render_mode,
+			vertices_container,
+			lines
 		);
 	}
 
-	pub fn set_sdf_vertices(
-		&mut self,
-		gpu: &VxGpuResource,
-		render_mode: VxRenderMode,
-		vertices: Vec<VxVertexContainer<VxSdfVertex>>,
-	) {
-		let draw_lines_container = match render_mode {
-			VxRenderMode::Retained => &mut self.retained_draw_lines,
-			VxRenderMode::Immediate => &mut self.immediate_draw_lines,
-		};
-		Self::write_data_to_buffer(
-			gpu, &mut self.sdf_module, render_mode, vertices, draw_lines_container
-		);
-	}
-
-	pub fn set_texture_vertices(
-		&mut self,
-		gpu: &VxGpuResource,
-		render_mode: VxRenderMode,
-		vertices: Vec<VxVertexContainer<VxTextureVertex>>,
-	) {
-		let draw_lines_container = match render_mode {
-			VxRenderMode::Retained => &mut self.retained_draw_lines,
-			VxRenderMode::Immediate => &mut self.immediate_draw_lines,
-		};
-		Self::write_data_to_buffer(
-			gpu, &mut self.texture_module, render_mode, vertices, draw_lines_container
-		);
-	}
-
-	pub fn set_text_vertices(
-		&mut self,
-		gpu: &VxGpuResource,
-		render_mode: VxRenderMode,
-		vertices: Vec<VxVertexContainer<VxTextVertex>>,
-	) {
-		let draw_lines_container = match render_mode {
-			VxRenderMode::Retained => &mut self.retained_draw_lines,
-			VxRenderMode::Immediate => &mut self.immediate_draw_lines,
-		};
-		Self::write_data_to_buffer(
-			gpu, &mut self.text_module, render_mode, vertices, draw_lines_container
-		);
-	}
-
-	fn write_data_to_buffer<T: bytemuck::Pod + bytemuck::Zeroable>(
+	fn write_data_to_buffer<T: VxVertexRenderModuleTarget>(
 		gpu: &VxGpuResource,
 		module: &mut VxRenderModule,
 		render_mode: VxRenderMode,
@@ -497,7 +466,7 @@ impl VxRenderer {
 
 		let mut all_vertices: Vec<T> = Vec::with_capacity(total_vert_len);
 		let mut all_index: Vec<u32> = Vec::with_capacity(total_index_len);
-		draw_lines.draw_lines_mut().reserve(vertex_container.len());
+		draw_lines.reserve(vertex_container.len());
 
 		let mut current_vertex_offset = 0u32;
 
@@ -518,7 +487,7 @@ impl VxRenderer {
 			current_vertex_offset += len;
 
 			let draw_line = VxDrawLine::new(
-				module.module_id,
+				T::MODULE_ID,
 				before_index_len,
 				all_index.len() as u32 - before_index_len,
 				container.z_value(),
@@ -546,4 +515,21 @@ impl VxRenderer {
 		gpu.queue.write_buffer(vertex_buffer, 0, vert_data);
 		gpu.queue.write_buffer(index_buffer, 0, index_data);
 	}
+}
+
+pub trait VxVertexRenderModuleTarget: bytemuck::Pod + bytemuck::Zeroable {
+	const MODULE_ID: VxRenderModuleId;
+}
+
+impl VxVertexRenderModuleTarget for VxVertex {
+	const MODULE_ID: VxRenderModuleId = VxRenderModuleId::VERTEX;
+}
+impl VxVertexRenderModuleTarget for VxSdfVertex {
+	const MODULE_ID: VxRenderModuleId = VxRenderModuleId::SDF;
+}
+impl VxVertexRenderModuleTarget for VxTextureVertex {
+	const MODULE_ID: VxRenderModuleId = VxRenderModuleId::TEXTURE;
+}
+impl VxVertexRenderModuleTarget for VxTextVertex {
+	const MODULE_ID: VxRenderModuleId = VxRenderModuleId::TEXT;
 }

@@ -12,13 +12,15 @@ pub struct DemoWindow {
 impl VxWindow for DemoWindow {
 	fn init_event(&mut self) {
 		for i in 0..1920 {
-			let mut rect = VxRectWidget::new(
-				VxRect::from_i32(0, 0, 1, 1080),
-				VxColor::from_hsv(i as f32 / 1920.0, 1.0, 1.0),
-				None
-			);
-			rect.set_pos((i, 0).into());
-			self.add_widget(rect);
+			for j in 0..12 {
+				let mut rect = VxRectWidget::new(
+					VxRect::from_i32(0, 0, 1, 100),
+					VxColor::from_hsv(i as f32 / 1920.0, 1.0, 1.0),
+					None
+				);
+				rect.set_pos((i, j * 100).into());
+				self.add_widget(rect);
+			}
 		}
 
 		let mut counter: f32 = 0.0;
@@ -32,9 +34,6 @@ impl VxWindow for DemoWindow {
 		);
 		area.set_pos((150, 250).into());
 		self.add_widget(area);
-	}
-	fn has_immediate(&self) -> bool {
-		true
 	}
 }
 

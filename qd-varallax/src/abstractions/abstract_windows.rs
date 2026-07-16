@@ -113,6 +113,7 @@ pub struct VxWindowStats {
 	config: wgpu::SurfaceConfiguration,
 	renderer: VxRenderer,
 	scene: VxScene,
+	painter: VxPainter,
 	input: VxInputState,
 
 	next_update_mode: VxDirtyCheckResult,
@@ -142,8 +143,6 @@ impl VxWindowStats {
 
 		let renderer = VxRenderer::new(gpu, &config);
 
-		let scene = VxScene::new();
-
 		let input = VxInputState::new(
 			VxMouseState::new(
 				Default::default(),
@@ -160,7 +159,8 @@ impl VxWindowStats {
 			surface,
 			config,
 			renderer,
-			scene,
+			scene: VxScene::new(),
+			painter: VxPainter::new(),
 			input,
 			next_update_mode: VxDirtyCheckResult::All,
 			is_dirty: true,
@@ -170,33 +170,32 @@ impl VxWindowStats {
 	pub(crate) fn resized_event(
 		&mut self,
 		gpu: &VxGpuResource,
-		new_size: winit::dpi::PhysicalSize<u32>,
-	) {
-		if new_size.width > 0 && new_size.height > 0 {
-			self.config.width = new_size.width;
-			self.config.height = new_size.height;
+		new_size: VxSize,
+	) -> VxEventResult {
+		if !new_size.is_empty() {
+			self.config.width = new_size.width_u32();
+			self.config.height = new_size.height_u32();
 			gpu.update_surface_config(&self.surface, &self.config);
 			self.renderer.update_projection(
 				gpu,
-				VxMatrix4x4::orthographic(VxSize::from_u32(new_size.width, new_size.height)),
+				VxMatrix4x4::orthographic(new_size),
 			);
 		}
 		self.is_dirty = true;
+		VxEventResult::Ignore
 	}
 	pub fn update_event(&mut self, res: &mut VxAppResource) {
 		let input = &self.input;
 		match self.next_update_mode {
 			VxDirtyCheckResult::All => {
-				let mut painter = VxPainter::new();
-				self.scene.paint_event(res, &mut painter);
-				self.scene.immediate_paint_event(res, input, &mut painter);
+				self.scene.paint_event(res, &mut self.painter);
+				self.scene.immediate_paint_event(res, input, &mut self.painter);
 				// どうせ全部再描画だしImmediateバッファはクリアするから、同じバッファにまとめる
-				self.take_and_set_vertices_to_renderer(res, &mut painter, VxRenderMode::Retained);
+				self.take_and_set_vertices_to_renderer(res, VxRenderMode::Retained);
 			}
 			VxDirtyCheckResult::OnlyImmediate => {
-				let mut painter = VxPainter::new();
-				self.scene.immediate_paint_event(res, input, &mut painter);
-				self.take_and_set_vertices_to_renderer(res, &mut painter, VxRenderMode::Immediate);
+				self.scene.immediate_paint_event(res, input, &mut self.painter);
+				self.take_and_set_vertices_to_renderer(res, VxRenderMode::Immediate);
 			}
 			_ => { return; }
 		}
@@ -207,19 +206,19 @@ impl VxWindowStats {
 		self.renderer.render(res, &self.surface);
 	}
 
-	fn take_and_set_vertices_to_renderer(&mut self, res: &mut VxAppResource, painter: &mut VxPainter, render_mode: VxRenderMode) {
+	fn take_and_set_vertices_to_renderer(&mut self, res: &mut VxAppResource, render_mode: VxRenderMode) {
 		self.renderer.prepare_render(render_mode);
 
-		let verts = std::mem::take(&mut painter.vertices);
-		let sdf_verts = std::mem::take(&mut painter.sdf_verts);
-		let tex_verts = std::mem::take(&mut painter.tex_verts);
-		let text_data = std::mem::take(&mut painter.text_data);
+		let verts = std::mem::take(&mut self.painter.vertices);
+		let sdf_verts = std::mem::take(&mut self.painter.sdf_verts);
+		let tex_verts = std::mem::take(&mut self.painter.tex_verts);
+		let text_data = std::mem::take(&mut self.painter.text_data);
 		let text_verts = res.fonts.generate_text_vertices(&res.gpu, text_data);
 
-		self.renderer.set_vertex_vertices(&res.gpu, render_mode, verts);
-		self.renderer.set_sdf_vertices(&res.gpu, render_mode, sdf_verts);
-		self.renderer.set_texture_vertices(&res.gpu, render_mode, tex_verts);
-		self.renderer.set_text_vertices(&res.gpu, render_mode, text_verts);
+		self.renderer.set_vertices(&res.gpu, render_mode, verts);
+		self.renderer.set_vertices(&res.gpu, render_mode, sdf_verts);
+		self.renderer.set_vertices(&res.gpu, render_mode, tex_verts);
+		self.renderer.set_vertices(&res.gpu, render_mode, text_verts);
 	}
 
 	pub(crate) fn check_dirty(&mut self) {
@@ -244,7 +243,7 @@ impl VxWindowStats {
 	}
 }
 
-pub(crate) trait VxWindowInternal: std::any::Any {
+pub trait VxWindowInternal: std::any::Any {
 	fn stats(&self) -> &Option<VxWindowStats>;
 	fn stats_mut(&mut self) -> &mut Option<VxWindowStats>;
 	fn set_stats(&mut self, stat: VxWindowStats);
@@ -266,35 +265,29 @@ pub trait VxWindow: VxWindowInternal {
 			stat.update_event(res);
 		}
 	}
-	// Events
-	fn chain_resize_event(&mut self, gpu: &VxGpuResource, new_size: winit::dpi::PhysicalSize<u32>) {
-		if let Some(stat) = self.stats_mut() {
-			stat.resized_event(gpu, new_size);
-		}
-	}
 
-	fn handle_event(&mut self, event: &VxEvent) {
+	fn handle_event(&mut self, gpu: &VxGpuResource, event: &VxEvent) {
 		match event {
 			VxEvent::MousePressEvent { event } => {
-				self.mouse_press_event(&event);
+				self.mouse_press_event(event);
 			}
 			VxEvent::MouseReleaseEvent { event } => {
-				self.mouse_release_event(&event);
+				self.mouse_release_event(event);
 			}
 			VxEvent::MouseMoveEvent { event } => {
-				self.mouse_move_event(&event);
+				self.mouse_move_event(event);
 			}
 			VxEvent::MouseWheelEvent { event } => {
-				self.mouse_wheel_event(&event);
+				self.mouse_wheel_event(event);
 			}
 			VxEvent::KeyPressedEvent { event } => {
-				self.key_press_event(&event);
+				self.key_press_event(event);
 			}
 			VxEvent::KeyReleasedEvent { event } => {
-				self.key_release_event(&event);
+				self.key_release_event(event);
 			}
 			VxEvent::ResizeEvent { event } => {
-				self.resize_event(&event);
+				self.resize_event(gpu, event);
 			}
 			VxEvent::ShowEvent { .. } => {
 				self.show_event();
@@ -306,45 +299,33 @@ pub trait VxWindow: VxWindowInternal {
 	}
 
 	fn mouse_press_event(&mut self, event: &VxMouseEvent) -> VxEventResult {
-		if let Some(stat) = self.stats_mut() {
-			return stat.scene.mouse_press_event(&event);
-		}
-		VxEventResult::Accept
+		self.stats_mut().as_mut()
+			.map_or(VxEventResult::Accept,	|stats| stats.scene.mouse_press_event(event))
 	}
 	fn mouse_release_event(&mut self, event: &VxMouseEvent) -> VxEventResult {
-		if let Some(stat) = self.stats_mut() {
-			return stat.scene.mouse_release_event(&event);
-		}
-		VxEventResult::Accept
+		self.stats_mut().as_mut()
+			.map_or(VxEventResult::Accept,	|stats| stats.scene.mouse_release_event(event))
 	}
 	fn mouse_move_event(&mut self, event: &VxMouseEvent) -> VxEventResult {
-		if let Some(stat) = self.stats_mut() {
-			return stat.scene.mouse_move_event(&event);
-		}
-		VxEventResult::Accept
+		self.stats_mut().as_mut()
+			.map_or(VxEventResult::Accept,	|stats| stats.scene.mouse_move_event(event))
 	}
 	fn mouse_wheel_event(&mut self, event: &VxMouseEvent) -> VxEventResult {
-		if let Some(stat) = self.stats_mut() {
-			return stat.scene.mouse_wheel_event(&event);
-		}
-		VxEventResult::Accept
+		self.stats_mut().as_mut()
+			.map_or(VxEventResult::Accept,	|stats| stats.scene.mouse_wheel_event(event))
 	}
 	fn key_press_event(&mut self, event: &VxKeyEvent) -> VxEventResult {
-		if let Some(stat) = self.stats_mut() {
-			return stat.scene.key_press_event(&event);
-		}
-		VxEventResult::Accept
+		self.stats_mut().as_mut()
+			.map_or(VxEventResult::Accept,	|stats| stats.scene.key_press_event(event))
 	}
 	fn key_release_event(&mut self, event: &VxKeyEvent) -> VxEventResult {
-		if let Some(stat) = self.stats_mut() {
-			return stat.scene.key_release_event(&event);
-		}
-		VxEventResult::Accept
+		self.stats_mut().as_mut()
+			.map_or(VxEventResult::Accept,	|stats| stats.scene.key_release_event(event))
 	}
 
-	fn resize_event(&mut self, event: &VxWindowEvent) -> VxEventResult {
-		let _ = event;
-		VxEventResult::Accept
+	fn resize_event(&mut self, gpu: &VxGpuResource, event: &VxWindowEvent) -> VxEventResult {
+		self.stats_mut().as_mut()
+			.map_or(VxEventResult::Accept,	|stats| stats.resized_event(gpu, event.size()))
 	}
 	fn show_event(&self) -> VxEventResult {
 		VxEventResult::Accept
@@ -355,96 +336,89 @@ pub trait VxWindow: VxWindowInternal {
 }
 
 pub trait VxWindowExt: VxWindow {
+	#[inline]
 	fn add_widget<W: VxWidget>(&mut self, widget: W) -> Option<VxWidgetHandler<W>> {
-		if let Some(stats) = self.stats_mut() {
-			return Some(stats.scene.add_widget(widget));
-		} else {
-			return None;
-		}
+		self.stats_mut().as_mut()
+			.map(|stats| stats.scene.add_widget(widget))
 	}
-	// fn get_widget<W: VxWidget>(&self, handler: VxWidgetHandler<W>) -> Option<&W> {
-	// 	if let Some(stats) = self.stats() {
-	// 		stats.scene.get_widget(handler)
-	// 	} else {
-	// 		None
-	// 	}
-	// }
-	// fn get_widget_mut<W: VxWidget>(&mut self, handler: VxWidgetHandler<W>) -> Option<&mut W> {
-	// 	if let Some(stats) = self.stats_mut() {
-	// 		stats.scene.get_widget_mut(handler)
-	// 	} else {
-	// 		None
-	// 	}
-	// }
+	#[inline]
+	fn get_widget<W: VxWidget>(&self, handler: VxWidgetHandler<W>) -> Option<&W> {
+		self.stats().as_ref()
+			.and_then(|stats| stats.scene.get_widget(handler))
+	}
+	#[inline]
+	fn get_widget_mut<W: VxWidget>(&mut self, handler: VxWidgetHandler<W>) -> Option<&mut W> {
+		self.stats_mut().as_mut()
+			.and_then(|stats| stats.scene.get_widget_mut(handler))
+	}
+	#[inline]
 	fn set_fixed_size(&self, size: Option<VxSize>) {
-		if let Some(s) = self.stats() {
-			VxWindowFunctions::set_fixed_size(&s.window, size);
-		}
+		self.stats().as_ref()
+			.map(|stats| VxWindowFunctions::set_fixed_size(&stats.window, size));
 	}
+	#[inline]
 	fn set_minimum_size(&self, size: Option<VxSize>) {
-		if let Some(s) = self.stats() {
-			VxWindowFunctions::set_minimum_size(&s.window, size);
-		}
+		self.stats().as_ref()
+			.map(|stats| VxWindowFunctions::set_minimum_size(&stats.window, size));
 	}
+	#[inline]
 	fn set_maximum_size(&self, size: Option<VxSize>) {
-		if let Some(s) = self.stats() {
-			VxWindowFunctions::set_maximum_size(&s.window, size);
-		}
+		self.stats().as_ref()
+			.map(|stats| VxWindowFunctions::set_maximum_size(&stats.window, size));
 	}
+	#[inline]
 	fn set_window_resizable(&self, resizable: bool) {
-		if let Some(s) = self.stats() {
-			VxWindowFunctions::set_window_resizable(&s.window, resizable);
-		}
+		self.stats().as_ref()
+			.map(|stats| VxWindowFunctions::set_window_resizable(&stats.window, resizable));
 	}
+	#[inline]
 	fn set_transparent(&self, transparent: bool) {
-		if let Some(s) = self.stats() {
-			VxWindowFunctions::set_transparent(&s.window, transparent);
-		}
+		self.stats().as_ref()
+			.map(|stats| VxWindowFunctions::set_transparent(&stats.window, transparent));
 	}
+	#[inline]
 	fn show_fullscreen(&self) {
-		if let Some(s) = self.stats() {
-			VxWindowFunctions::show_fullscreen(&s.window);
-		}
+		self.stats().as_ref()
+			.map(|stats| VxWindowFunctions::show_fullscreen(&stats.window));
 	}
+	#[inline]
 	fn show_normal(&self) {
-		if let Some(s) = self.stats() {
-			VxWindowFunctions::show_normal(&s.window);
-		}
+		self.stats().as_ref()
+			.map(|stats| VxWindowFunctions::show_normal(&stats.window));
 	}
+	#[inline]
 	fn is_fullscreen(&self) -> bool {
-		if let Some(s) = self.stats() {
-			return VxWindowFunctions::is_fullscreen(&s.window);
-		}
-		false
+		self.stats().as_ref()
+			.map_or(false, |stats| VxWindowFunctions::is_fullscreen(&stats.window))
 	}
+	#[inline]
 	fn close(&self) {
 		let res = self.close_event();
 		if res == VxEventResult::Ignore {
 			return;
 		}
-		if let Some(s) = self.stats() {
-			VxWindowFunctions::close(&s.window, &s.proxy);
-		}
+		self.stats().as_ref()
+			.map(|stats| VxWindowFunctions::close(&stats.window, &stats.proxy));
 	}
+	#[inline]
 	fn show(&self, window: Box<dyn VxWindowBuilder>) {
-		if let Some(stat) = self.stats() {
-			VxWindowFunctions::show(window, &stat.proxy);
-		}
+		self.stats().as_ref()
+			.map(|stats| VxWindowFunctions::show(window, &stats.proxy));
 	}
+	#[inline]
 	fn update(&mut self) {
-		if let Some(stat) = self.stats_mut() {
-			stat.set_dirty(true);
-		}
+		self.stats_mut().as_mut()
+			.map(|stats| stats.set_dirty(true));
 	}
+	#[inline]
 	fn set_window_layer(&self, layer: VxWindowLayer) {
-		if let Some(s) = self.stats() {
-			VxWindowFunctions::set_window_layer(&s.window, layer);
-		}
+		self.stats().as_ref()
+			.map(|stats| VxWindowFunctions::set_window_layer(&stats.window, layer));
 	}
+	#[inline]
 	fn set_window_minimizable(&self, minimizable: bool) {
-		if let Some(s) = self.stats() {
-			VxWindowFunctions::set_window_minimizable(&s.window, minimizable);
-		}
+		self.stats().as_ref()
+			.map(|stats| VxWindowFunctions::set_window_minimizable(&stats.window, minimizable));
 	}
 }
 impl<T: VxWindow + ?Sized> VxWindowExt for T {}

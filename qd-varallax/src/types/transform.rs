@@ -360,7 +360,7 @@ impl Default for VxTransform {
 
 impl VxTransform {
 	#[inline]
-	pub fn new(
+	pub const fn new(
 		pos: VxVec2,
 		size: VxSize,
 		scale: VxSize,
@@ -378,30 +378,30 @@ impl VxTransform {
 
 	// getters
 	#[inline]
-	pub fn pos(self) -> VxVec2 { self.pos }
+	pub const fn pos(self) -> VxVec2 { self.pos }
 	#[inline]
-	pub fn size(self) -> VxSize { self.size }
+	pub const fn size(self) -> VxSize { self.size }
 	#[inline]
-	pub fn scale(self) -> VxSize { self.scale }
+	pub const fn scale(self) -> VxSize { self.scale }
 	#[inline]
-	pub fn rotation(self) -> VxAngle { self.rotation }
+	pub const fn rotation(self) -> VxAngle { self.rotation }
 	#[inline]
-	pub fn pivot(self) -> VxVec2 { self.pivot }
+	pub const fn pivot(self) -> VxVec2 { self.pivot }
 
 	#[inline]
-	pub fn set_pos(&mut self, pos: VxVec2) {
+	pub const fn set_pos(&mut self, pos: VxVec2) {
 		self.pos = pos;
 	}
 	#[inline]
-	pub fn set_size(&mut self, size: VxSize) {
+	pub const fn set_size(&mut self, size: VxSize) {
 		self.size = size;
 	}
 	#[inline]
-	pub fn set_scale(&mut self, scale: VxSize) {
+	pub const fn set_scale(&mut self, scale: VxSize) {
 		self.scale = scale;
 	}
 	#[inline]
-	pub fn set_rotation(&mut self, rotation: VxAngle) {
+	pub const fn set_rotation(&mut self, rotation: VxAngle) {
 		self.rotation = rotation;
 	}
 
@@ -421,7 +421,7 @@ impl VxTransform {
 		self.rotation += rotation;
 	}
 	#[inline]
-	pub fn set_center_pivot(&mut self, pivot: VxVec2) {
+	pub const fn set_center_pivot(&mut self, pivot: VxVec2) {
 		self.pivot = pivot;
 	}
 }
