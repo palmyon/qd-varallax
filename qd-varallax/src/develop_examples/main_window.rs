@@ -1,5 +1,5 @@
 use crate::{abstractions::{abstract_widgets::VxWidget, abstract_windows::*}, core::glyph::VxFont, types::{color::VxColor, geometry::{VxRect, VxRectR}}, widgets::{button::{VxButtonStyle, VxButtonWidget}, immediate_area::VxImmediateAreaWidget, theme::VxThemeMode, vx_widgets::VxRectWidget}};
-use vx_macro::VxWindowDerive;
+use qd_varallax_macro::VxWindowDerive;
 
 #[derive(VxWindowDerive)]
 pub struct DemoWindow {

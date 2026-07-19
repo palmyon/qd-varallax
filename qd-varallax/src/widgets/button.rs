@@ -1,4 +1,4 @@
-use vx_macro::VxWidgetDerive;
+use qd_varallax_macro::VxWidgetDerive;
 
 use crate::{
 	abstractions::{abstract_layouts::VxAlignment, abstract_widgets::{

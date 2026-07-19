@@ -1,7 +1,7 @@
 [workspace]
 members = [
 	"qd-varallax",
-	"vx_macro",
+	"qd-varallax-macro",
 ]
 resolver = "2"
 

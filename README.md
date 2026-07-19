@@ -90,7 +90,7 @@ The core trait for widgets. Implementing this trait and incorporating `VxWidgetS
 * Manages all windows, drives the <i>dirty-check</i> loop, and automatically handles application exit.
 
 ### Widget
-* Functions as a widget via implementing the `VxWidget` trait and deriving <a href = "./vx_macro/src/lib.rs">`VxWidgetDerive`</a>.
+* Functions as a widget via implementing the `VxWidget` trait and deriving <a href = "./qd-varallax-macro/src/lib.rs">`VxWidgetDerive`</a>.
 * Managed centrally by `VxScene`. By hoding the ID and type information within
 <a href = "./qd-varallax/src/abstractions/abstract_widgets.rs">`VxWidgetHandler`</a>,
 the actual widget instance can be retrieved from the scene.
@@ -243,7 +243,7 @@ QD-Varallaxでは、大まかに以下の図(英語版と共通)のようなア�
 
 ### ウィジェット
 * <a href = "./qd-varallax/src/abstractions/abstract_widgets.rs">VxWindow</a>
-トレイトを継承し、<a href = "./vx_macro/src/lib.rs">VxWidgetDerive</a>マクロを使うことで、ウィジェットとして動作させることが出来る。
+トレイトを継承し、<a href = "./qd-varallax-macro/src/lib.rs">VxWidgetDerive</a>マクロを使うことで、ウィジェットとして動作させることが出来る。
 * <a href = "./qd-varallax/src/core/scene.rs">VxScene</a>
 で一括管理され、
 <a href = "./qd-varallax/src/abstractions/abstract_widgets.rs">VxWidgetHandler</a>

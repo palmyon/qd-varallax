@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-vx_macro ={ path = "../vx_macro" }
+qd-varallax-macro ={ path = "../qd-varallax-macro" }
 winit = "0.30"
 wgpu = "28.0.0"
 pollster = "0.4"

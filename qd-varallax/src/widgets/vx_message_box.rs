@@ -1,4 +1,4 @@
-use vx_macro::VxWindowDerive;
+use qd_varallax_macro::VxWindowDerive;
 
 use crate::{
 	abstractions::{
