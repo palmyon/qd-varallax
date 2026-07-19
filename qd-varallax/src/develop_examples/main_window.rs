@@ -1,4 +1,4 @@
-use crate::{abstractions::{abstract_widgets::VxWidget, abstract_windows::*}, types::{color::VxColor, geometry::VxRect}, widgets::{immediate_area::VxImmediateAreaWidget, vx_widgets::VxRectWidget}};
+use crate::{abstractions::{abstract_widgets::VxWidget, abstract_windows::*}, core::glyph::VxFont, types::{color::VxColor, geometry::{VxRect, VxRectR}}, widgets::{button::{VxButtonStyle, VxButtonWidget}, immediate_area::VxImmediateAreaWidget, theme::VxThemeMode, vx_widgets::VxRectWidget}};
 use vx_macro::VxWindowDerive;
 
 #[derive(VxWindowDerive)]
@@ -19,9 +19,21 @@ impl VxWindow for DemoWindow {
 					None
 				);
 				rect.set_pos((i, j * 100).into());
+				rect.set_z_value(-5);
 				self.add_widget(rect);
 			}
 		}
+
+		let button = VxButtonWidget::new(
+			VxRectR::new(VxRect::from_i32(0, 0, 200, 50), 3.0),
+			"こんにちは",
+			VxButtonStyle::new(VxThemeMode::DarkMode, VxFont::from_family_str("kokumr", 30.0)),
+			None
+		);
+		button.signals.clicked.connect(|button, pos| {
+			button.set_pos(*pos);
+		});
+		self.add_widget(button);
 
 		let mut counter: f32 = 0.0;
 		let mut area = VxImmediateAreaWidget::new(
@@ -34,6 +46,9 @@ impl VxWindow for DemoWindow {
 		);
 		area.set_pos((150, 250).into());
 		self.add_widget(area);
+	}
+	fn has_immediate(&self) -> bool {
+		true
 	}
 }
 

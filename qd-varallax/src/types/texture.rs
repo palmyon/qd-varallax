@@ -3,7 +3,7 @@ use std::path::Path;
 use image::{DynamicImage, ImageReader};
 
 use crate::types::{
-	color::{VxColor, VxColorChannel, VxColorChannelSwap, VxColorU8}, gen_vector::VxGenIndex, geometry::{
+	color::{VxColorChannel, VxColorChannelSwap, VxColorU8}, gen_vector::VxGenIndex, geometry::{
 		VxAspectMode,
 		VxSize,
 		VxVec2
@@ -75,10 +75,9 @@ impl VxImage {
 	}
 
 	pub fn from_raw_rgb(data: Vec<u8>, size: VxSize) -> Self {
-		let mut pixels = Vec::with_capacity(data.len() / 3);
-		for rgb in data.chunks(3) {
-			pixels.push(VxColorU8::rgba(rgb[0], rgb[1], rgb[2], 255));
-		}
+		let pixels = data.chunks(3)
+			.map(|rgb| VxColorU8::rgba(rgb[0], rgb[1], rgb[2], 255))
+			.collect();
 		Self {
 			pixels,
 			size,
@@ -86,10 +85,9 @@ impl VxImage {
 		}
 	}
 	pub fn from_raw_rgba(data: Vec<u8>, size: VxSize) -> Self {
-		let mut pixels = Vec::with_capacity(data.len() / 4);
-		for rgba in data.chunks(4) {
-			pixels.push(VxColorU8::rgba(rgba[0], rgba[1], rgba[2], rgba[3]));
-		}
+		let pixels = data.chunks(4)
+			.map(|rgba| VxColorU8::rgba(rgba[0], rgba[1], rgba[2], rgba[3]))
+			.collect();
 		Self {
 			pixels,
 			size,
@@ -98,14 +96,9 @@ impl VxImage {
 	}
 
 	pub fn from_raw_rgba_f(data: Vec<f32>, size: VxSize) -> Self {
-		let mut pixels = Vec::with_capacity(data.len() / 4);
-		for rgba in data.chunks(4) {
-			pixels.push(
-				VxColorU8::from_vxcolor(
-					VxColor::rgba(rgba[0], rgba[1], rgba[2], rgba[3])
-				)
-			);
-		}
+		let pixels = data.chunks(4)
+			.map(|rgba| VxColorU8::rgba_f(rgba[0], rgba[1], rgba[2], rgba[3]))
+			.collect();
 		Self {
 			pixels,
 			size,

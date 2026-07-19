@@ -7,7 +7,7 @@ pub struct VxGenIndex {
 }
 
 //Slot
-pub(crate) enum VxSlot<T> {
+pub(crate) enum VxGenSlot<T> {
 	Using {
 		data: T,
 		generation: u64,
@@ -19,28 +19,28 @@ pub(crate) enum VxSlot<T> {
 }
 
 //Generation Iterator
-pub struct GenIter<'a, T> {
-	inner: std::slice::Iter<'a, VxSlot<T>>,
+pub struct VxGenIterator<'a, T> {
+	inner: std::slice::Iter<'a, VxGenSlot<T>>,
 }
 
 //Generation Iterator (mut)
-pub struct GenIterMut<'a, T> {
-	inner: std::slice::IterMut<'a, VxSlot<T>>,
+pub struct VxGenIteratorMut<'a, T> {
+	inner: std::slice::IterMut<'a, VxGenSlot<T>>,
 }
 
 //Generation Iterator and ID
-pub struct GenIterWithId<'a, T> {
-	inner: std::iter::Enumerate<std::slice::Iter<'a, VxSlot<T>>>,
+pub struct VxGenIteratorWithId<'a, T> {
+	inner: std::iter::Enumerate<std::slice::Iter<'a, VxGenSlot<T>>>,
 }
 
 //Generation Iterator and ID (mut)
-pub struct GenIterWithIdMut<'a, T> {
-	inner: std::iter::Enumerate<std::slice::IterMut<'a, VxSlot<T>>>,
+pub struct VxgenIteratorWithIdMut<'a, T> {
+	inner: std::iter::Enumerate<std::slice::IterMut<'a, VxGenSlot<T>>>,
 }
 
 //Generation Vector
 pub struct VxGenVector<T> {
-	pub(crate) slots: Vec<VxSlot<T>>,
+	pub(crate) slots: Vec<VxGenSlot<T>>,
 	free_head: Option<usize>,
 	len: usize,
 }
@@ -58,40 +58,40 @@ impl VxGenIndex {
 }
 
 //Generation Iterator
-impl <'a, T> Iterator for GenIter<'a, T> {
+impl <'a, T> Iterator for VxGenIterator<'a, T> {
 	type Item = &'a T;
 	
 	fn next(&mut self) -> Option<Self::Item> {
 		loop {
 			match self.inner.next()? {
-				VxSlot::Using { data, .. } => return Some(data),
-				VxSlot::Free { .. } => continue,
+				VxGenSlot::Using { data, .. } => return Some(data),
+				VxGenSlot::Free { .. } => continue,
 			}
 		}
 	}
 }
 
 //Generation Iterator (mut)
-impl <'a, T> Iterator for GenIterMut<'a, T> {
+impl <'a, T> Iterator for VxGenIteratorMut<'a, T> {
 	type Item = &'a mut T;
 
 	fn next(&mut self) -> Option<Self::Item> {
 		loop {
 			match self.inner.next()? {
-				VxSlot::Using { data, .. } => return Some(data),
-				VxSlot::Free { .. } => continue,
+				VxGenSlot::Using { data, .. } => return Some(data),
+				VxGenSlot::Free { .. } => continue,
 			}
 		}
 	}
 }
 
 //Generation Iterator and ID
-impl <'a, T> Iterator for GenIterWithId<'a, T> {
+impl <'a, T> Iterator for VxGenIteratorWithId<'a, T> {
 	type Item = (VxGenIndex, &'a T);
 
 	fn next(&mut self) -> Option<Self::Item> {
 		while let Some((index, slot)) = self.inner.next() {
-			if let VxSlot::Using { data, generation } = slot {
+			if let VxGenSlot::Using { data, generation } = slot {
 				return Some((
 					VxGenIndex::new(index, *generation),
 					data
@@ -103,12 +103,12 @@ impl <'a, T> Iterator for GenIterWithId<'a, T> {
 }
 
 //Generation Iterator and ID (mut)
-impl <'a, T> Iterator for GenIterWithIdMut<'a, T> {
+impl <'a, T> Iterator for VxgenIteratorWithIdMut<'a, T> {
 	type Item = (VxGenIndex, &'a mut T);
 
 	fn next(&mut self) -> Option<Self::Item> {
 		while let Some((index, slot)) = self.inner.next() {
-			if let VxSlot::Using { data, generation } = slot {
+			if let VxGenSlot::Using { data, generation } = slot {
 				return Some((
 					VxGenIndex::new(index, *generation),
 					data
@@ -148,14 +148,14 @@ impl <T> VxGenVector<T> {
 	pub fn insert_with_key<F: FnOnce(VxGenIndex) -> T>(&mut self, f: F) -> VxGenIndex {
 		if let Some(index) = self.free_head {
 			match &mut self.slots[index] {
-				VxSlot::Free { next_free, generation } => {
+				VxGenSlot::Free { next_free, generation } => {
 					let g = *generation;
 					let id = VxGenIndex::new(index, g);
 
 					let data = f(id);
 
 					self.free_head = *next_free;
-					self.slots[index] = VxSlot::Using { data, generation: g };
+					self.slots[index] = VxGenSlot::Using { data, generation: g };
 					self.len += 1;
 					id
 				}
@@ -166,7 +166,7 @@ impl <T> VxGenVector<T> {
 			let generation = 0;
 			let id = VxGenIndex::new(index, generation);
 			let data = f(id);
-			self.slots.push(VxSlot::Using { data, generation });
+			self.slots.push(VxGenSlot::Using { data, generation });
 			self.len += 1;
 			id
 		}
@@ -176,16 +176,16 @@ impl <T> VxGenVector<T> {
 		let slot = self.slots.get_mut(id.index)?;
 
 		match slot {
-			VxSlot::Using { generation , .. } if *generation == id.generation => {
+			VxGenSlot::Using { generation , .. } if *generation == id.generation => {
 				let old_gen= *generation;
 				let old_slot = std::mem::replace(
 					slot,
-					VxSlot::Free {
+					VxGenSlot::Free {
 						next_free: self.free_head,
 						generation: old_gen + 1
 					}
 				);
-				if let VxSlot::Using { data, .. } = old_slot {
+				if let VxGenSlot::Using { data, .. } = old_slot {
 					self.free_head = Some(id.index);
 					self.len -= 1;
 					return Some(data);
@@ -199,7 +199,7 @@ impl <T> VxGenVector<T> {
 	//getter
 	pub fn get(&self, id: VxGenIndex) -> Option<&T> {
 		match self.slots.get(id.index)? {
-			VxSlot::Using {
+			VxGenSlot::Using {
 				data,
 				generation
 			} if *generation == id.generation => Some(data),
@@ -208,7 +208,7 @@ impl <T> VxGenVector<T> {
 	}
 	pub fn get_mut(&mut self, id: VxGenIndex) -> Option<&mut T> {
 		match self.slots.get_mut(id.index)? {
-			VxSlot::Using {
+			VxGenSlot::Using {
 				data,
 				generation
 			} if *generation == id.generation => Some(data),
@@ -231,8 +231,8 @@ impl <T> VxGenVector<T> {
 
 		match (slot_min, slot_max) {
 			(
-				VxSlot::Using { data: d_min, generation: g_min },
-				VxSlot::Using { data: d_max, generation: g_max }
+				VxGenSlot::Using { data: d_min, generation: g_min },
+				VxGenSlot::Using { data: d_max, generation: g_max }
 			) if *g_min == min_index.generation && *g_max == max_index.generation => {
 				if swapped {
 					Some((d_max, d_min))
@@ -246,7 +246,7 @@ impl <T> VxGenVector<T> {
 
 	pub fn last(&self) -> Option<&T> {
 		self.slots.iter().rev().find_map(|slot| {
-			if let VxSlot::Using { data, .. } = slot {
+			if let VxGenSlot::Using { data, .. } = slot {
 				Some(data)
 			} else {
 				None
@@ -256,7 +256,7 @@ impl <T> VxGenVector<T> {
 
 	pub fn last_mut(&mut self) -> Option<&mut T> {
 		self.slots.iter_mut().rev().find_map(|slot| {
-			if let VxSlot::Using { data, .. } = slot {
+			if let VxGenSlot::Using { data, .. } = slot {
 				Some(data)
 			} else {
 				None
@@ -269,7 +269,7 @@ impl <T> VxGenVector<T> {
 			.enumerate()
 			.rev()
 			.find_map(|(index, slot)| {
-				if let VxSlot::Using { generation, .. } = slot {
+				if let VxGenSlot::Using { generation, .. } = slot {
 					Some(VxGenIndex::new(index, *generation))
 				} else {
 					None
@@ -284,7 +284,7 @@ impl <T> VxGenVector<T> {
 
 	pub fn contains(&self, id: VxGenIndex) -> bool {
 		match self.slots.get(id.index) {
-			Some(VxSlot::Using { generation, .. }) => *generation == id.generation,
+			Some(VxGenSlot::Using { generation, .. }) => *generation == id.generation,
 			_ => false,
 		}
 	}
@@ -299,17 +299,17 @@ impl <T> VxGenVector<T> {
 	pub fn capacity(&self) -> usize { self.slots.capacity() }
 
 	//Iterators
-	pub fn iter(&self) -> GenIter<'_, T> {
-		GenIter { inner: self.slots.iter() }
+	pub fn iter(&self) -> VxGenIterator<'_, T> {
+		VxGenIterator { inner: self.slots.iter() }
 	}
-	pub fn iter_mut(&mut self) -> GenIterMut<'_, T> {
-		GenIterMut { inner: self.slots.iter_mut() }
+	pub fn iter_mut(&mut self) -> VxGenIteratorMut<'_, T> {
+		VxGenIteratorMut { inner: self.slots.iter_mut() }
 	}
-	pub fn iter_with_id(&self) -> GenIterWithId<'_, T> {
-		GenIterWithId { inner: self.slots.iter().enumerate() }
+	pub fn iter_with_id(&self) -> VxGenIteratorWithId<'_, T> {
+		VxGenIteratorWithId { inner: self.slots.iter().enumerate() }
 	}
-	pub fn iter_with_id_mut(&mut self) -> GenIterWithIdMut<'_, T> {
-		GenIterWithIdMut { inner: self.slots.iter_mut().enumerate() }
+	pub fn iter_with_id_mut(&mut self) -> VxgenIteratorWithIdMut<'_, T> {
+		VxgenIteratorWithIdMut { inner: self.slots.iter_mut().enumerate() }
 	}
 	#[inline]
 	pub fn clear(&mut self) {

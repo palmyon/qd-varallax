@@ -27,7 +27,7 @@ use crate::{
 		gen_vector::{
 			VxGenIndex,
 			VxGenVector,
-			VxSlot
+			VxGenSlot
 		},
 		geometry::{
 			VxRect,
@@ -121,7 +121,7 @@ impl VxTextureSystem {
 			if i >= texture_array_size {
 				break;
 			}
-			if let VxSlot::Using { data, .. } = slot {
+			if let VxGenSlot::Using { data, .. } = slot {
 				views_ref[i] = &data.view;
 			}
 		}
@@ -411,7 +411,7 @@ impl VxFontSystem {
 			if i >= texture_array_size {
 				break;
 			}
-			if let VxSlot::Using { data, .. } = slot {
+			if let VxGenSlot::Using { data, .. } = slot {
 				views_ref[i] = &data.1.view;
 			}
 		}

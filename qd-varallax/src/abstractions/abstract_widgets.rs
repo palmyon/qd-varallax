@@ -58,11 +58,11 @@ impl<W: VxWidget> VxWidgetHandler<W> {
 bitflags::bitflags!{
 	#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Default)]
 	pub struct VxDirtyFlag: u32 {
-		const CLEAN = 0;
-		const BOUNDING_RECT = 1;
-		const TRANSFORM = 2;
-		const REPAINT = 3;
-		const LAYOUT = 4;
+		const CLEAN         = 0;
+		const BOUNDING_RECT = 1 << 0;
+		const TRANSFORM     = 1 << 1;
+		const REPAINT       = 1 << 2;
+		const LAYOUT        = 1 << 3;
 		const REBUILD_ALL = Self::CLEAN.bits() | Self::BOUNDING_RECT.bits() |
 							Self::TRANSFORM.bits() | Self::REPAINT.bits() | Self::LAYOUT.bits();
 	}
@@ -73,11 +73,13 @@ pub struct VxDirtyCommandSender {
 	handler: Rc<dyn Fn(VxWidgetId, VxDirtyFlag)>,
 }
 impl VxDirtyCommandSender {
+	#[inline]
 	pub fn new(handler: impl Fn(VxWidgetId, VxDirtyFlag) + 'static) -> Self {
 		Self {
 			handler: Rc::new(handler),
 		}
 	}
+	#[inline]
 	pub fn mark_dirty(&self, id: VxWidgetId, dirty_flag: VxDirtyFlag) {
 		(self.handler)(id, dirty_flag);
 	}
@@ -87,7 +89,8 @@ impl VxDirtyCommandSender {
 pub enum VxSpatialHierarchyFlag {
 	#[default]
 	Flat,
-	Hierarchical,
+	HierarchyParent,
+	HierarchyChild,
 }
 
 pub struct VxWidgetStats {

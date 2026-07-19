@@ -9,7 +9,7 @@ winit = "0.30"
 wgpu = "28.0.0"
 pollster = "0.4"
 bytemuck = { version = "1.25.0", features = ["derive"] }
-derive_more ={ version = "2.1.1", features = ["full"] }
+derive_more = { version = "2.1.1", features = ["full"] }
 image = "0.25.10"
 rfd = "0.17.2"
 swash = "0.2.7"

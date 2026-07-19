@@ -1,5 +1,6 @@
-use std::collections::HashMap;
+use std::{sync::Arc, time::{Duration, Instant}};
 
+use ahash::AHashMap;
 use winit::{
 	application::ApplicationHandler,
 	event::{
@@ -14,24 +15,36 @@ use winit::{
 		KeyCode,
 		PhysicalKey
 	},
-	window::WindowId
+	window::{
+		Window,
+		WindowId
+	}
 };
 
 use crate::{
 	abstractions::abstract_windows::{
-		VxWindow,
-		VxWindowStats
-	}, core::resource::VxAppResource, types::{event::{VxEvent, VxKeyEvent, VxMouseEvent, VxWindowEvent}, geometry::{
+		VxWindow, VxWindowStats
+	}, core::resource::VxAppResource, types::{
+		event::{
+			VxEvent,
+			VxKeyEvent,
+			VxMouseEvent,
+			VxWindowEvent
+		},
+		geometry::{
 			VxSize,
 			VxVec2
-		}}
+		}
+	}
 };
 
 
 struct VxAppHandler {
 	resources: Option<VxAppResource>,
-	windows: HashMap<WindowId, Box<dyn VxWindow>>,
+	windows: AHashMap<WindowId, (Arc<Window>, Box<dyn VxWindow>)>,
 	init_windows: Vec<Box<dyn VxWindow>>,
+	last_frame_time: Instant,
+	target_frame_duration: Duration,
 	last_mouse_pos: VxVec2,
 	wheel_pixel_amount: f32,
 	proxy: EventLoopProxy<VxEvent>,
@@ -39,18 +52,24 @@ struct VxAppHandler {
 
 impl ApplicationHandler<VxEvent> for VxAppHandler {
 	fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
-		// 初期化前なら初期化
-		if self.resources.is_none() {
-			self.resources = Some(VxAppResource::new());
-		} else {
+		if self.resources.is_some() {
 			return;
 		}
-
-		let Some(resource) = &self.resources else { return; };
-		
 		for window in std::mem::take(&mut self.init_windows) {
-			let Some((id, w)) = Self::create_window(event_loop, resource, window, self.proxy.clone()) else { continue; };
-			self.windows.insert(id, w);
+			let Some((winit_window, w)) = Self::create_window(event_loop, window) else { continue; };
+			let id = winit_window.id();
+			self.windows.insert(id, (Arc::new(winit_window), w));
+		}
+
+		let res = self.resources.get_or_insert_with(|| VxAppResource::new());
+
+		for (winit_window, window) in self.windows.values_mut() {
+			if window.stats().is_none() {
+				let stats = VxWindowStats::new(&res.gpu, winit_window.clone(), self.proxy.clone());
+				window.set_stats(stats);
+				window.init_event();
+				window.stats_mut().as_mut().map(|s| s.finalize_init());
+			}
 		}
 	}
 
@@ -61,7 +80,7 @@ impl ApplicationHandler<VxEvent> for VxAppHandler {
 			event: winit::event::WindowEvent,
 		) {
 		let Some(resource) = &mut self.resources else { return; };
-		let Some(window) = self.windows.get_mut(&window_id) else { return; };
+		let Some((_, window)) = self.windows.get_mut(&window_id) else { return; };
 
 		match event {
 			WindowEvent::RedrawRequested => {
@@ -174,49 +193,50 @@ impl ApplicationHandler<VxEvent> for VxAppHandler {
 					return;
 				};
 
-				let Some((id, w)) = Self::create_window(event_loop, res, window, self.proxy.clone()) else { return; };
-				self.windows.insert(id, w);
+				let Some((winit_window, mut w)) = Self::create_window(event_loop, window) else { return; };
+				let id = winit_window.id();
+				let arc_window = Arc::new(winit_window);
+				w.set_stats(VxWindowStats::new(&res.gpu, arc_window.clone(), self.proxy.clone()));
+				w.init_event();
+				w.stats_mut().as_mut().map(|s| s.finalize_init());
+				self.windows.insert(id, (arc_window, w));
 			}
 			_ => {}
 		}
 	}
 	fn about_to_wait(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
-		let mut has_immediate = false;
-		for window in self.windows.values_mut() {
-			if window.has_immediate() {
-				has_immediate = true;
-				if let Some(stat) = window.stats_mut() {
-					stat.set_dirty(true);
-					stat.check_dirty();
-				}
-			} else {
-				if let Some(stat) = window.stats_mut() {
-					stat.check_dirty();
+		let now = Instant::now();
+		let elapsed = now.duration_since(self.last_frame_time);
+		if elapsed >= self.target_frame_duration {
+			for (_, window) in self.windows.values_mut() {
+				let has_immediate = window.has_immediate();
+				if let Some(stats) = window.stats_mut() {
+					if has_immediate {
+						if !stats.check_dirty() {
+							stats.window.request_redraw();
+						}
+					} else {
+						stats.check_dirty();
+					}
 				}
 			}
+			self.last_frame_time = now;
+			event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
+		} else {
+			let timeout = self.target_frame_duration - elapsed;
+			event_loop.set_control_flow(winit::event_loop::ControlFlow::wait_duration(timeout));
 		}
-		let flow = if has_immediate { winit::event_loop::ControlFlow::Poll } else { winit::event_loop::ControlFlow::Wait };
-		event_loop.set_control_flow(flow);
 	}
 }
 
 impl VxAppHandler {
 	pub(crate) fn create_window(
 		event_loop: &winit::event_loop::ActiveEventLoop,
-		res: &VxAppResource,
-		mut window: Box<dyn VxWindow>,
-		proxy: EventLoopProxy<VxEvent>,
-	) -> Option<(WindowId, Box<dyn VxWindow>)> {
+		window: Box<dyn VxWindow>,
+	) -> Option<(Window, Box<dyn VxWindow>)> {
 		let attr = window.create_window_attr();
 		let winit_window = event_loop.create_window(attr).ok()?;
-		let id = winit_window.id();
-		let stats = VxWindowStats::new(&res.gpu, winit_window, proxy);
-		window.set_stats(stats);
-		window.init_event();
-		if let Some(s) = window.stats_mut() {
-			s.finalize_init();
-		}
-		Some((id, window))
+		Some((winit_window, window))
 	}
 }
 
@@ -228,7 +248,8 @@ pub struct VxApplication {
 impl VxApplication {
 	pub fn new() -> Self {
 		let mut builder = EventLoop::<VxEvent>::with_user_event();
-		let event_loop = builder.build().expect("VxApplication> new(): Failed to Create EventLoop");
+		let event_loop = builder.build()
+			.expect("VxApplication> new(): Failed to Create EventLoop");
 		event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
 
 		let proxy = event_loop.create_proxy();
@@ -237,20 +258,26 @@ impl VxApplication {
 			event_loop,
 			handler: VxAppHandler {
 				resources: None,
-				windows: HashMap::new(),
+				windows: AHashMap::new(),
 				init_windows: Vec::new(),
-
+				last_frame_time: Instant::now(),
+				target_frame_duration: Duration::from_secs_f64(1.0 / 60.0),
 				last_mouse_pos: VxVec2::default(),
 				wheel_pixel_amount: 15.0,
 				proxy
 			}
 		}
 	}
-
+	#[inline]
+	pub fn with_target_frame_rate(mut self, target_frame_rate: f64) -> Self {
+		self.handler.target_frame_duration = Duration::from_secs_f64(1.0 / target_frame_rate);
+		self
+	}
+	#[inline]
 	pub fn add_window<W: VxWindow + 'static>(&mut self, window: W) {
 		self.handler.init_windows.push(Box::new(window));
 	}
-
+	#[inline]
 	pub fn exec(mut self) {
 		self.event_loop.run_app(&mut self.handler).unwrap();
 	}

@@ -121,8 +121,7 @@ pub struct VxWindowStats {
 }
 
 impl VxWindowStats {
-	pub fn new(gpu: &VxGpuResource, window: Window, proxy: EventLoopProxy<VxEvent>) -> Self {
-		let window = Arc::new(window);
+	pub fn new(gpu: &VxGpuResource, window: Arc<Window>, proxy: EventLoopProxy<VxEvent>) -> Self {
 		let size = window.inner_size();
 
 		let surface = gpu.instance.create_surface(window.clone())
@@ -221,12 +220,15 @@ impl VxWindowStats {
 		self.renderer.set_vertices(&res.gpu, render_mode, text_verts);
 	}
 
-	pub(crate) fn check_dirty(&mut self) {
+	pub(crate) fn check_dirty(&mut self) -> bool {
 		let dirty = self.scene.check_dirty();
 		if dirty != VxDirtyCheckResult::None || self.is_dirty {
 			self.next_update_mode = if self.is_dirty { VxDirtyCheckResult::All } else { dirty };
 			self.is_dirty = false;
 			self.window.request_redraw();
+			true
+		} else {
+			false
 		}
 	}
 
@@ -239,7 +241,7 @@ impl VxWindowStats {
 	}
 
 	pub fn finalize_init(&mut self) {
-		// self.scene.refresh_spatial_index();
+		self.scene.refresh_spatial_index();
 	}
 }
 

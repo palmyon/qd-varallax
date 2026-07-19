@@ -29,7 +29,7 @@ impl VxSpatialIndex {
 		}
 	}
 
-	pub fn rebuild_bvh(&mut self, widgets: &[(VxWidgetId, Aabb)]) {
+	pub fn rebuild_bvh(&mut self, widgets: Vec<(VxWidgetId, Aabb)>) {
 		let aabbs: Vec<Aabb> = widgets.iter().map(|(_, aabb)| *aabb).collect();
 		self.indices = widgets.iter().map(|(id, _)| *id).collect();
 
