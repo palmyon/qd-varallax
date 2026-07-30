@@ -389,6 +389,11 @@ impl From<[i32; 4]> for VxRect {
 		Self::from_i32(value[0], value[1], value[2], value[3])
 	}
 }
+impl std::fmt::Display for VxRect {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "x: {}, y: {}, w: {}, h: {}", self.x(), self.y(), self.width(), self.height())
+	}
+}
 //実装ブロック
 
 impl VxRect {
@@ -684,23 +689,23 @@ pub struct VxRectR {
 
 impl VxRectR {
 	#[inline]
-	pub fn new(rect: VxRect, corner_radius: f32) -> Self {
+	pub const fn new(rect: VxRect, corner_radius: f32) -> Self {
 		Self { rect, corner_radius }
 	}
 
 	// getter
 	#[inline]
-	pub fn rect(&self) -> VxRect { self.rect }
+	pub const fn rect(&self) -> VxRect { self.rect }
 	#[inline]
-	pub fn corner_radius(&self) -> f32 { self.corner_radius }
+	pub const fn corner_radius(&self) -> f32 { self.corner_radius }
 
 	// setter
 	#[inline]
-	pub fn set_rect(&mut self, rect: VxRect) {
+	pub const fn set_rect(&mut self, rect: VxRect) {
 		self.rect = rect;
 	}
 	#[inline]
-	pub fn set_corner_radius(&mut self, corner_radius: f32) {
+	pub const fn set_corner_radius(&mut self, corner_radius: f32) {
 		self.corner_radius = corner_radius;
 	}
 }

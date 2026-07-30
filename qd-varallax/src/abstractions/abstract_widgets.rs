@@ -1,14 +1,17 @@
 use std::rc::Rc;
 
 use crate::{
-	abstractions::abstract_layouts::VxAlignment, core::{
+	abstractions::abstract_layouts::{VxBoundingRectCreator, VxLayout}, core::{
 		gpu_resource::VxGpuResource,
-		systems::{
-			VxFontSystem,
-			VxTextureSystem
-		},
+		systems::VxTextureSystem,
 	}, painter::painter::VxPainter, types::{
-		event::{VxEventResult, VxKeyEvent, VxMouseEvent}, gen_vector::VxGenIndex, geometry::{
+		event::{
+			VxEventResult,
+			VxKeyEvent,
+			VxMouseEvent
+		}, gen_vector::{
+			VxGenIndex, VxGenIndexConvertToRawIndex, VxGenIndexInvalid
+		}, geometry::{
 			VxRect,
 			VxSize,
 			VxVec2
@@ -37,6 +40,28 @@ impl VxWidgetId {
 	}
 }
 
+impl VxGenIndexConvertToRawIndex for VxWidgetId {
+	#[inline]
+	fn raw_index(&self) -> usize {
+		self.id.raw_index()
+	}
+	#[inline]
+	fn raw_index_u32(&self) -> u32 {
+		self.id.raw_index_u32()
+	}
+}
+
+impl VxGenIndexInvalid for VxWidgetId {
+	#[inline]
+	fn new_invalid() -> Self {
+		Self { id: VxGenIndex::new_invalid() }
+	}
+	#[inline]
+	fn is_valid(&self) -> bool {
+		self.id.is_valid()
+	}
+}
+
 #[derive(Hash, Clone, Copy, PartialEq, Eq, Debug)]
 pub struct VxWidgetHandler<W: VxWidget> {
 	id: VxWidgetId,
@@ -59,12 +84,9 @@ bitflags::bitflags!{
 	#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Default)]
 	pub struct VxDirtyFlag: u32 {
 		const CLEAN         = 0;
-		const BOUNDING_RECT = 1 << 0;
-		const TRANSFORM     = 1 << 1;
-		const REPAINT       = 1 << 2;
-		const LAYOUT        = 1 << 3;
-		const REBUILD_ALL = Self::CLEAN.bits() | Self::BOUNDING_RECT.bits() |
-							Self::TRANSFORM.bits() | Self::REPAINT.bits() | Self::LAYOUT.bits();
+		const REPAINT       = 1 << 0;
+		const LAYOUT        = 1 << 1;
+		const REBUILD_ALL   = Self::CLEAN.bits() | Self::REPAINT.bits() | Self::LAYOUT.bits();
 	}
 }
 
@@ -75,9 +97,7 @@ pub struct VxDirtyCommandSender {
 impl VxDirtyCommandSender {
 	#[inline]
 	pub fn new(handler: impl Fn(VxWidgetId, VxDirtyFlag) + 'static) -> Self {
-		Self {
-			handler: Rc::new(handler),
-		}
+		Self { handler: Rc::new(handler) }
 	}
 	#[inline]
 	pub fn mark_dirty(&self, id: VxWidgetId, dirty_flag: VxDirtyFlag) {
@@ -98,11 +118,14 @@ pub struct VxWidgetStats {
 	transform: VxTransform,
 	visible: bool,
 	z_value: i32,
+	bounding_rect: VxRect,
 	dirty_command_sender: Option<VxDirtyCommandSender>,
+	block_dirty: bool,
 	parent: Option<VxWidgetId>,
 	children: Vec<VxWidgetId>,
-	alignment: VxAlignment,
+	layout: VxLayout,
 	spatial_hierarchy_flag: VxSpatialHierarchyFlag,
+	spatial_hierarchy_parent: VxWidgetId,
 	update_mode: VxRenderMode,
 
 	children_widgets: Vec<Box<dyn VxWidget>>,
@@ -115,11 +138,14 @@ impl VxWidgetStats {
 			transform: VxTransform::default(),
 			visible: true,
 			z_value: 0,
+			bounding_rect: VxRect::default(),
 			dirty_command_sender: None,
+			block_dirty: false,
 			parent,
 			children: Vec::new(),
-			alignment: VxAlignment::default(),
+			layout: VxLayout::new(),
 			spatial_hierarchy_flag: VxSpatialHierarchyFlag::Flat,
+			spatial_hierarchy_parent: VxWidgetId::new_invalid(),
 			update_mode: VxRenderMode::Retained,
 			children_widgets: Vec::new(),
 		}
@@ -146,15 +172,23 @@ impl VxWidgetStats {
 	#[inline]
 	pub const fn z_value(&self) -> i32 { self.z_value }
 	#[inline]
-	pub const fn alignment(&self) -> VxAlignment { self.alignment }
+	pub const fn bounding_rect(&self) -> VxRect { self.bounding_rect }
+	#[inline]
+	pub const fn layout(&self) -> &VxLayout { &self.layout }
+	#[inline]
+	pub const fn layout_mut(&mut self) ->&mut VxLayout { &mut self.layout }
 	#[inline]
 	pub const fn spatial_hierarchy_flag(&self) -> VxSpatialHierarchyFlag {
 		self.spatial_hierarchy_flag
 	}
 	#[inline]
+	pub(crate) const fn spatial_hierarchy_parent(&self) -> VxWidgetId {
+		self.spatial_hierarchy_parent
+	}
+	#[inline]
 	pub const fn update_mode(&self) -> VxRenderMode { self.update_mode }
 	#[inline]
-	pub(crate) fn children_widgets(&mut self) -> Vec<Box<dyn VxWidget>> {
+	pub(crate) fn children_widgets_take(&mut self) -> Vec<Box<dyn VxWidget>> {
 		std::mem::take(&mut self.children_widgets)
 	}
 
@@ -168,32 +202,33 @@ impl VxWidgetStats {
 	#[inline]
 	pub fn set_pos(&mut self, pos: VxVec2) {
 	self.transform.set_pos(pos);
-		self.set_dirty_flag(VxDirtyFlag::TRANSFORM);
+		self.set_dirty_flag(VxDirtyFlag::LAYOUT);
 	}
 	#[inline]
 	pub fn set_angle(&mut self, angle: VxAngle) {
 		self.transform.set_rotation(angle);
-		self.set_dirty_flag(VxDirtyFlag::TRANSFORM);
+		self.set_dirty_flag(VxDirtyFlag::LAYOUT);
 	}
 	#[inline]
 	pub fn set_scale(&mut self, scale: VxSize) {
 		self.transform.set_scale(scale);
-		self.set_dirty_flag(VxDirtyFlag::TRANSFORM);
+		self.set_dirty_flag(VxDirtyFlag::LAYOUT);
 	}
 	#[inline]
 	pub fn set_center_pivot(&mut self, pivot: VxVec2) {
 		self.transform.set_center_pivot(pivot);
-		self.set_dirty_flag(VxDirtyFlag::TRANSFORM);
+		self.set_dirty_flag(VxDirtyFlag::LAYOUT);
 	}
 	#[inline]
 	pub fn set_transform(&mut self, transform: VxTransform) {
 		self.transform = transform;
-		self.set_dirty_flag(VxDirtyFlag::TRANSFORM);
+		self.set_dirty_flag(VxDirtyFlag::LAYOUT);
 	}
 	#[inline]
 	pub const fn set_parent(&mut self, parent: VxWidgetId) { self.parent = Some(parent); }
 	#[inline]
 	pub fn set_visible(&mut self, visible: bool) {
+		if self.visible == visible { return; }
 		self.visible = visible;
 		self.set_dirty_flag(VxDirtyFlag::REPAINT);
 	}
@@ -204,20 +239,45 @@ impl VxWidgetStats {
 		self.set_dirty_flag(VxDirtyFlag::REPAINT);
 	}
 	#[inline]
+	pub fn set_bounding_rect(&mut self, rect: VxRect) {
+		self.bounding_rect = rect;
+		self.set_dirty_flag(VxDirtyFlag::LAYOUT);
+	}
+	#[inline]
+	pub fn set_block_dirty(&mut self, block_dirty: bool) {
+		self.block_dirty = block_dirty;
+	}
+	#[inline]
 	pub fn set_dirty_flag(&self, dirty: VxDirtyFlag) {
+		if self.block_dirty { return; }
 		if let (Some(sender), Some(id)) = (&self.dirty_command_sender, self.id) {
 			sender.mark_dirty(id, dirty);
+			match dirty {
+				VxDirtyFlag::LAYOUT | VxDirtyFlag::REBUILD_ALL => {
+					for child_id in self.children() {
+						sender.mark_dirty(*child_id, dirty);
+					}
+				}
+				_ => {}
+			}
 		}
 	}
 	#[inline]
-	pub fn set_alignment(&mut self, alignment: VxAlignment) {
-		self.alignment = alignment;
+	pub fn set_layout(&mut self, layout: VxLayout) {
+		self.layout = layout;
 		self.set_dirty_flag(VxDirtyFlag::LAYOUT);
 	}
 	#[inline]
 	pub fn set_spatial_hierarchy_flag(&mut self, spatial_hierarchy_flag: VxSpatialHierarchyFlag) {
+		if self.spatial_hierarchy_flag == spatial_hierarchy_flag { return; }
 		self.spatial_hierarchy_flag = spatial_hierarchy_flag;
 		self.set_dirty_flag(VxDirtyFlag::REBUILD_ALL);
+	}
+	#[inline]
+	pub(crate) fn set_spatial_hierarchy_parent(&mut self, spatial_hierarchy_parent: VxWidgetId) {
+		if self.spatial_hierarchy_parent == spatial_hierarchy_parent { return; }
+		self.spatial_hierarchy_parent = spatial_hierarchy_parent;
+		self.set_dirty_flag(VxDirtyFlag::LAYOUT);
 	}
 	#[inline]
 	pub const fn set_update_mode(&mut self, update_mode: VxRenderMode) {
@@ -239,12 +299,16 @@ pub trait VxWidgetInternal: std::any::Any {
 }
 
 pub trait VxWidget: VxWidgetInternal {
-	fn bounding_rect(&self) -> VxRect;
+	#[inline]
+	fn bounding_rect(&self) -> VxRect {
+		self.stats().bounding_rect().with_transform(self.transform())
+	}
 	fn paint(&mut self, painter: &mut VxPainter);
 	fn immediate_paint(&mut self, input: &VxInputState, painter: &mut VxPainter) {
 		let _ = input;
 		let _ = painter;
 	}
+	fn size_hint(&mut self, creator: &mut VxBoundingRectCreator) -> Option<VxSize>;
 
 	// Stats Wrapping
 	#[inline]
@@ -253,14 +317,6 @@ pub trait VxWidget: VxWidgetInternal {
 	fn parent(&self) -> Option<VxWidgetId> { self.stats().parent() }
 	#[inline]
 	fn children(&self) -> &Vec<VxWidgetId> { &self.stats().children() }
-	#[inline]
-	fn pos(&self) -> VxVec2 { self.stats().pos() }
-	#[inline]
-	fn angle(&self) -> VxAngle { self.stats().angle() }
-	#[inline]
-	fn scale(&self) -> VxSize { self.stats().scale() }
-	#[inline]
-	fn transform(&self) -> VxTransform { self.stats().transform() }
 	#[inline]
 	fn is_visible(&self) -> bool { self.stats().is_visible() }
 	#[inline]
@@ -272,16 +328,6 @@ pub trait VxWidget: VxWidgetInternal {
 
 	#[inline]
 	fn set_parent(&mut self, parent: VxWidgetId) { self.stats_mut().set_parent(parent); }
-	#[inline]
-	fn set_pos(&mut self, pos: VxVec2) { self.stats_mut().set_pos(pos); }
-	#[inline]
-	fn set_angle(&mut self, angle: VxAngle) { self.stats_mut().set_angle(angle); }
-	#[inline]
-	fn set_scale(&mut self, scale: VxSize) { self.stats_mut().set_scale(scale); }
-	#[inline]
-	fn set_center_pivot(&mut self, pivot: VxVec2) { self.stats_mut().set_center_pivot(pivot); }
-	#[inline]
-	fn set_transform(&mut self, transform: VxTransform) { self.stats_mut().set_transform(transform); }
 	#[inline]
 	fn set_visible(&mut self, visible: bool) { self.stats_mut().set_visible(visible); }
 	#[inline]
@@ -342,10 +388,43 @@ pub trait VxWidget: VxWidgetInternal {
 		let _ = gpu;
 		let _ = system;
 	}
-	fn create_bounding_rect_event(&mut self, system: &VxFontSystem) {
-		let _ = system;
+}
+
+pub trait VxWidgetGeometryExt: VxWidget {
+	#[inline]
+	fn pos(&self) -> VxVec2 { self.stats().pos() }
+	#[inline]
+	fn angle(&self) -> VxAngle { self.stats().angle() }
+	#[inline]
+	fn scale(&self) -> VxSize { self.stats().scale() }
+	#[inline]
+	fn transform(&self) -> VxTransform { self.stats().transform() }
+
+	#[inline]
+	fn set_pos(&mut self, pos: VxVec2) { self.stats_mut().set_pos(pos); }
+	#[inline]
+	fn set_angle(&mut self, angle: VxAngle) { self.stats_mut().set_angle(angle); }
+	#[inline]
+	fn set_scale(&mut self, scale: VxSize) { self.stats_mut().set_scale(scale); }
+	#[inline]
+	fn set_center_pivot(&mut self, pivot: VxVec2) { self.stats_mut().set_center_pivot(pivot); }
+	#[inline]
+	fn set_transform(&mut self, transform: VxTransform) { self.stats_mut().set_transform(transform); }
+}
+
+pub trait VxWidgetLayoutExt: VxWidget {
+	#[inline]
+	fn layout(&self) -> &VxLayout { self.stats().layout() }
+	#[inline]
+	fn layout_mut(&mut self) -> &mut VxLayout { self.stats_mut().layout_mut() }
+	#[inline]
+	fn set_layout(&mut self, layout: VxLayout) {
+		self.stats_mut().set_layout(layout);
 	}
 }
+
+impl<T: VxWidget + ?Sized> VxWidgetGeometryExt for T {}
+impl<T: VxWidget + ?Sized> VxWidgetLayoutExt for T {}
 
 // signals
 vx_signal!(pub struct VxHoveredSignal >> VxVec2);
@@ -387,4 +466,4 @@ macro_rules! vx_widget_signals {
 	};
 }
 
-vx_widget_signals!(pub struct VxDefaultSignals {});
+vx_widget_signals!(pub struct VxDefaultWidgetSignals {});

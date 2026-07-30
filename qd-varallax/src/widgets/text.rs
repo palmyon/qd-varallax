@@ -1,11 +1,8 @@
 use qd_varallax_macro::VxWidgetDerive;
 
 use crate::{
-	abstractions::abstract_widgets::{
-		VxDirtyFlag, VxWidget, VxWidgetId, VxWidgetInternal, VxWidgetStats
-	}, core::glyph::VxFont, types::{
+	abstractions::abstract_widgets::*, core::glyph::VxFont, types::{
 		color::VxColor,
-		geometry::VxRect
 	}, vx_widget_signals,
 };
 
@@ -22,13 +19,16 @@ pub struct VxTextWidget {
 	color: VxColor,
 	font: VxFont,
 	change_bounding_rect: bool,
-	bounding_rect: VxRect,
 	signals: VxTextSignals<Self>
 }
 
 impl VxWidget for VxTextWidget {
-	fn bounding_rect(&self) -> VxRect {
-		self.bounding_rect.with_transform(self.transform())
+	fn size_hint(&mut self, creator: &mut crate::abstractions::abstract_layouts::VxBoundingRectCreator) -> Option<crate::types::geometry::VxSize> {
+		if self.change_bounding_rect {
+			let rect = creator.create_text_bounding_rect(&self.text, self.font);
+			self.stats_mut().set_bounding_rect(rect);
+		}
+		Some(self.bounding_rect().size())
 	}
 	fn paint(&mut self, painter: &mut crate::painter::painter::VxPainter) {
 		painter.push_tranform(self.transform());
@@ -40,12 +40,8 @@ impl VxWidget for VxTextWidget {
 			1.5,
 			1.5
 		);
+		painter.draw_rect(self.bounding_rect(), VxColor::from_hex(0xFF0000).with_alpha(0.6));
 		painter.pop_transform();
-	}
-	fn create_bounding_rect_event(&mut self, system: &crate::core::systems::VxFontSystem) {
-		if self.change_bounding_rect {
-			self.bounding_rect = system.create_text_bounding_rect(self.font, &self.text);
-		}
 	}
 }
 
@@ -59,7 +55,6 @@ impl VxTextWidget {
 			color,
 			font,
 			change_bounding_rect: false,
-			bounding_rect: VxRect::default(),
 			signals: VxTextSignals::new(),
 		};
 		s.set_text(text);

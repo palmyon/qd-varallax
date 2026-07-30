@@ -9,7 +9,7 @@ use winit::{
 use crate::{
 	abstractions::{
 		abstract_widgets::{
-			VxWidget, 
+			VxWidget,
 			VxWidgetHandler
 		},
 		window_function::VxWindowFunctions
@@ -20,7 +20,7 @@ use crate::{
 		resource::VxAppResource,
 		scene::VxScene,
 	},
-	painter::painter::VxPainter, 
+	painter::painter::VxPainter,
 	types::{
 		event::{
 			VxEvent,
@@ -118,6 +118,7 @@ pub struct VxWindowStats {
 
 	next_update_mode: VxDirtyCheckResult,
 	is_dirty: bool,
+	window_size: VxSize,
 }
 
 impl VxWindowStats {
@@ -163,6 +164,7 @@ impl VxWindowStats {
 			input,
 			next_update_mode: VxDirtyCheckResult::All,
 			is_dirty: true,
+			window_size: VxSize::default(),
 		}
 	}
 
@@ -179,27 +181,28 @@ impl VxWindowStats {
 				gpu,
 				VxMatrix4x4::orthographic(new_size),
 			);
+			self.window_size = new_size;
 		}
 		self.is_dirty = true;
 		VxEventResult::Ignore
 	}
 	pub fn update_event(&mut self, res: &mut VxAppResource) {
-		let input = &self.input;
 		match self.next_update_mode {
 			VxDirtyCheckResult::All => {
 				self.scene.paint_event(res, &mut self.painter);
-				self.scene.immediate_paint_event(res, input, &mut self.painter);
-				// どうせ全部再描画だしImmediateバッファはクリアするから、同じバッファにまとめる
 				self.take_and_set_vertices_to_renderer(res, VxRenderMode::Retained);
+				self.scene.immediate_paint_event(res, &self.input, &mut self.painter);
+				// バッファをまとめたかったが、Immediate描画のバッファがRetainedに残存してしまうので仕方なく分ける
+				self.take_and_set_vertices_to_renderer(res, VxRenderMode::Immediate);
 			}
 			VxDirtyCheckResult::OnlyImmediate => {
-				self.scene.immediate_paint_event(res, input, &mut self.painter);
+				self.scene.immediate_paint_event(res, &self.input, &mut self.painter);
 				self.take_and_set_vertices_to_renderer(res, VxRenderMode::Immediate);
 			}
 			_ => { return; }
 		}
 		self.next_update_mode = VxDirtyCheckResult::None;
-		
+
 		res.textures.update_bind_group(&res.gpu);
 
 		self.renderer.render(res, &self.surface);
@@ -220,8 +223,8 @@ impl VxWindowStats {
 		self.renderer.set_vertices(&res.gpu, render_mode, text_verts);
 	}
 
-	pub(crate) fn check_dirty(&mut self) -> bool {
-		let dirty = self.scene.check_dirty();
+	pub(crate) fn check_dirty(&mut self, res: &mut VxAppResource) -> bool {
+		let dirty = self.scene.check_dirty(res, self.window_size);
 		if dirty != VxDirtyCheckResult::None || self.is_dirty {
 			self.next_update_mode = if self.is_dirty { VxDirtyCheckResult::All } else { dirty };
 			self.is_dirty = false;
@@ -232,14 +235,17 @@ impl VxWindowStats {
 		}
 	}
 
+	#[inline]
 	pub fn set_dirty(&mut self, dirty: bool) {
 		self.is_dirty = dirty;
 	}
 
+	#[inline]
 	pub fn scale_factor(&self) -> f32 {
 		self.window.scale_factor() as f32
 	}
 
+	#[inline]
 	pub fn finalize_init(&mut self) {
 		self.scene.refresh_spatial_index();
 	}

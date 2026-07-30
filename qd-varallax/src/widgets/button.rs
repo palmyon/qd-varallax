@@ -1,10 +1,7 @@
 use qd_varallax_macro::VxWidgetDerive;
 
 use crate::{
-	abstractions::{abstract_layouts::VxAlignment, abstract_widgets::{
-		VxDirtyFlag, VxWidget, VxWidgetId, VxWidgetInternal, VxWidgetStats
-	}}, core::glyph::VxFont, types::{color::VxColor, event::VxEventResult, geometry::{
-		VxRect,
+	abstractions::abstract_widgets::*, core::glyph::VxFont, types::{color::VxColor, event::VxEventResult, geometry::{
 		VxRectR,
 		VxVec2
 	}, input::VxMouseButton, style::VxSdfStyle}, vx_widget_signals, widgets::{text::VxTextWidget, theme::{
@@ -97,8 +94,8 @@ pub struct VxButtonWidget {
 }
 
 impl VxWidget for VxButtonWidget {
-	fn bounding_rect(&self) -> VxRect {
-		self.rect.rect().with_transform(self.transform())
+	fn size_hint(&mut self, _: &mut crate::abstractions::abstract_layouts::VxBoundingRectCreator) -> Option<crate::types::geometry::VxSize> {
+		Some(self.bounding_rect().size())
 	}
 	fn paint(&mut self, painter: &mut crate::painter::painter::VxPainter) {
 		let draw_color = if self.state.is_pressed() {
@@ -111,7 +108,7 @@ impl VxWidget for VxButtonWidget {
 
 		painter.push_tranform(self.transform());
 		painter.draw_sdf_rect(VxSdfStyle::new(
-			self.rect,
+			VxRectR::new(self.bounding_rect(), self.rect.corner_radius()),
 			draw_color,
 			VxColor::from_hex(0x00D4FF),
 			5.0,
@@ -175,10 +172,10 @@ impl VxButtonWidget {
 		style: VxButtonStyle,
 		parent: Option<VxWidgetId>
 	) -> Self {
-		let mut t = VxTextWidget::new(text, style.font(), VxColor::from_hex(0x000000), None);
-		t.stats_mut().set_alignment(VxAlignment::Center);
+		let t = VxTextWidget::new(text, style.font(), VxColor::from_hex(0x000000), None);
 		let mut stats = VxWidgetStats::new(parent);
 		stats.add_child_widget(t);
+		stats.set_bounding_rect(rect.rect());
 		Self {
 			stats, 
 			rect,

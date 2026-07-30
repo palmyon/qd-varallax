@@ -512,7 +512,8 @@ impl VxFontSystem {
 		VxVertexContainer::new(vert.to_vec(), index.to_vec())
 	}
 
-	pub fn create_text_bounding_rect(&self, font: VxFont, text: &str) -> VxRect {
+	pub fn create_text_bounding_rect(&mut self, gpu: &VxGpuResource, font: VxFont, text: &str) -> VxRect {
+		self.ensure_glyphs(gpu, Self::MTSDF_SIZE, font.family(), text);
 		let mut result_rect = VxRect::default();
 
 		let scale = font.pixel_size() / Self::MTSDF_SIZE;

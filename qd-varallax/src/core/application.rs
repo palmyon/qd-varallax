@@ -210,13 +210,13 @@ impl ApplicationHandler<VxEvent> for VxAppHandler {
 		if elapsed >= self.target_frame_duration {
 			for (_, window) in self.windows.values_mut() {
 				let has_immediate = window.has_immediate();
-				if let Some(stats) = window.stats_mut() {
+				if let (Some(res), Some(stats)) = (&mut self.resources, window.stats_mut()) {
 					if has_immediate {
-						if !stats.check_dirty() {
+						if !stats.check_dirty(res) {
 							stats.window.request_redraw();
 						}
 					} else {
-						stats.check_dirty();
+						stats.check_dirty(res);
 					}
 				}
 			}
@@ -271,6 +271,11 @@ impl VxApplication {
 	#[inline]
 	pub fn with_target_frame_rate(mut self, target_frame_rate: f64) -> Self {
 		self.handler.target_frame_duration = Duration::from_secs_f64(1.0 / target_frame_rate);
+		self
+	}
+	#[inline]
+	pub fn with_target_frame_duration_ms(mut self, target_frame_rate_ms: u64) -> Self {
+		self.handler.target_frame_duration = Duration::from_mins(target_frame_rate_ms);
 		self
 	}
 	#[inline]

@@ -15,6 +15,9 @@ impl VxWidget for VxImmediateAreaWidget {
 	fn bounding_rect(&self) -> VxRect {
 		self.area_rect.with_transform(self.transform())
 	}
+	fn size_hint(&mut self, _: &mut crate::abstractions::abstract_layouts::VxBoundingRectCreator) -> Option<crate::types::geometry::VxSize> {
+		Some(self.area_rect.size())
+	}
 	fn paint(&mut self, painter: &mut crate::painter::painter::VxPainter) {
 		painter.push_tranform(self.transform());
 		painter.draw_rect(self.bounding_rect(), VxColor::from_hex(0xFF0000).with_alpha(0.6));

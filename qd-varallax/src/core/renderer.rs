@@ -7,7 +7,7 @@ use crate::{
 		resource::VxAppResource
 	}, types::{
 		render_commands::{
-			VxDrawLine, VxDrawLineContainer, VxRenderMode, VxRenderModuleId, VxVertexContainer
+			VxDrawLine, VxDrawLineContainer, VxRenderMode, VxRenderModuleId, VxVertexContainer, VxVertexRenderModuleTarget
 		}, transform::VxMatrix4x4, vertex::{
 			VxSdfVertex,
 			VxTextVertex,
@@ -515,21 +515,4 @@ impl VxRenderer {
 		gpu.queue.write_buffer(vertex_buffer, 0, vert_data);
 		gpu.queue.write_buffer(index_buffer, 0, index_data);
 	}
-}
-
-pub trait VxVertexRenderModuleTarget: bytemuck::Pod + bytemuck::Zeroable {
-	const MODULE_ID: VxRenderModuleId;
-}
-
-impl VxVertexRenderModuleTarget for VxVertex {
-	const MODULE_ID: VxRenderModuleId = VxRenderModuleId::VERTEX;
-}
-impl VxVertexRenderModuleTarget for VxSdfVertex {
-	const MODULE_ID: VxRenderModuleId = VxRenderModuleId::SDF;
-}
-impl VxVertexRenderModuleTarget for VxTextureVertex {
-	const MODULE_ID: VxRenderModuleId = VxRenderModuleId::TEXTURE;
-}
-impl VxVertexRenderModuleTarget for VxTextVertex {
-	const MODULE_ID: VxRenderModuleId = VxRenderModuleId::TEXT;
 }

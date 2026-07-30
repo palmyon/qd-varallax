@@ -6,6 +6,38 @@ pub struct VxGenIndex {
 	pub(crate) generation: u64,
 }
 
+pub trait VxGenIndexConvertToRawIndex {
+	fn raw_index(&self) -> usize;
+	fn raw_index_u32(&self) -> u32;
+}
+
+pub trait VxGenIndexInvalid {
+	fn new_invalid() -> Self;
+	fn is_valid(&self) -> bool;
+}
+
+impl VxGenIndexConvertToRawIndex for VxGenIndex {
+	#[inline]
+	fn raw_index(&self) -> usize {
+		self.index
+	}
+	#[inline]
+	fn raw_index_u32(&self) -> u32 {
+		self.index as u32
+	}
+}
+
+impl VxGenIndexInvalid for VxGenIndex {
+	#[inline]
+	fn new_invalid() -> Self {
+		Self { index: usize::MAX, generation: u64::MAX }
+	}
+	#[inline]
+	fn is_valid(&self) -> bool {
+		self.index == usize::MAX && self.generation == u64::MAX
+	}
+}
+
 //Slot
 pub(crate) enum VxGenSlot<T> {
 	Using {
@@ -34,7 +66,7 @@ pub struct VxGenIteratorWithId<'a, T> {
 }
 
 //Generation Iterator and ID (mut)
-pub struct VxgenIteratorWithIdMut<'a, T> {
+pub struct VxGenIteratorWithIdMut<'a, T> {
 	inner: std::iter::Enumerate<std::slice::IterMut<'a, VxGenSlot<T>>>,
 }
 
@@ -103,7 +135,7 @@ impl <'a, T> Iterator for VxGenIteratorWithId<'a, T> {
 }
 
 //Generation Iterator and ID (mut)
-impl <'a, T> Iterator for VxgenIteratorWithIdMut<'a, T> {
+impl <'a, T> Iterator for VxGenIteratorWithIdMut<'a, T> {
 	type Item = (VxGenIndex, &'a mut T);
 
 	fn next(&mut self) -> Option<Self::Item> {
@@ -308,8 +340,8 @@ impl <T> VxGenVector<T> {
 	pub fn iter_with_id(&self) -> VxGenIteratorWithId<'_, T> {
 		VxGenIteratorWithId { inner: self.slots.iter().enumerate() }
 	}
-	pub fn iter_with_id_mut(&mut self) -> VxgenIteratorWithIdMut<'_, T> {
-		VxgenIteratorWithIdMut { inner: self.slots.iter_mut().enumerate() }
+	pub fn iter_with_id_mut(&mut self) -> VxGenIteratorWithIdMut<'_, T> {
+		VxGenIteratorWithIdMut { inner: self.slots.iter_mut().enumerate() }
 	}
 	#[inline]
 	pub fn clear(&mut self) {

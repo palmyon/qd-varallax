@@ -36,24 +36,30 @@ pub fn vx_window_derive(input: TokenStream) -> TokenStream {
 
 	let expanded = quote! {
 		impl VxWindowInternal for #name {
+			#[inline]
 			fn stats(&self) -> &Option<VxWindowStats> {
 				&self.#stat
 			}
+			#[inline]
 			fn stats_mut(&mut self) -> &mut Option<VxWindowStats> {
 				&mut self.#stat
 			}
+			#[inline]
 			fn set_stats(&mut self, stat: VxWindowStats) {
 				self.#stat = Some(stat);
 			}
+			#[inline]
 			fn window_attr(&self) -> &VxWindowAttributes {
 				&self.#window_attr
 			}
 		}
 
 		impl VxWindowBuilder for #name {
+			#[inline]
 			fn build(self: Box<Self>) -> Box<dyn VxWindow> {
 				self as Box<dyn VxWindow>
 			}
+			#[inline]
 			fn window_attr_b(&self) -> &VxWindowAttributes {
 				self.window_attr()
 			}
@@ -94,9 +100,13 @@ pub fn vx_widget_derive(input: TokenStream) -> TokenStream {
 
 	let expanded = quote! {
 		impl VxWidgetInternal for #name {
+			#[inline]
 			fn stats(&self) -> &VxWidgetStats { &self.#stat }
+			#[inline]
 			fn stats_mut(&mut self) -> &mut VxWidgetStats { &mut self.#stat }
+			#[inline]
 			fn as_any(&self) -> &dyn ::std::any::Any { self }
+			#[inline]
 			fn as_any_mut(&mut self) -> &mut dyn ::std::any::Any { self }
 		}
 	};

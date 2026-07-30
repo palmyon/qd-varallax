@@ -2,9 +2,7 @@
 use qd_varallax_macro::VxWidgetDerive;
 
 use crate::{
-	abstractions::abstract_widgets::{
-		VxWidget, VxWidgetId, VxWidgetInternal, VxWidgetStats
-	},
+	abstractions::abstract_widgets::*,
 	types::{
 		color::VxColor,
 		geometry::VxRect,
@@ -24,6 +22,9 @@ pub struct VxRectWidget {
 impl VxWidget for VxRectWidget {
 	fn bounding_rect(&self) -> VxRect {
 		self.rect.with_transform(self.transform())
+	}
+	fn size_hint(&mut self, _: &mut crate::abstractions::abstract_layouts::VxBoundingRectCreator) -> Option<crate::types::geometry::VxSize> {
+		Some(self.rect.size())
 	}
 
 	fn paint(&mut self, painter: &mut crate::painter::painter::VxPainter) {
@@ -63,6 +64,9 @@ pub struct VxTextureWidget {
 impl VxWidget for VxTextureWidget {
 	fn bounding_rect(&self) -> VxRect {
 		self.rect.with_transform(self.transform())
+	}
+	fn size_hint(&mut self, _: &mut crate::abstractions::abstract_layouts::VxBoundingRectCreator) -> Option<crate::types::geometry::VxSize> {
+		Some(self.rect.size())
 	}
 	fn paint(&mut self, painter: &mut crate::painter::painter::VxPainter) {
 		painter.push_tranform(self.transform());

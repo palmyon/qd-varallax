@@ -229,3 +229,7 @@ pub enum VxDirtyCheckResult {
 	OnlyImmediate,
 	All,
 }
+
+pub trait VxVertexRenderModuleTarget: bytemuck::Pod + bytemuck::Zeroable {
+	const MODULE_ID: VxRenderModuleId;
+}

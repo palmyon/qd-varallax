@@ -27,8 +27,7 @@ impl<'a> VxImmediateContext<'a> {
 	
 	/// API
 	
-	pub fn button(&mut self, _text: &str, color: VxColor) -> bool {
-		let size = VxSize::new(120.0, 50.0);
+	pub fn button(&mut self, _text: &str, color: VxColor, size: VxSize) -> bool {
 		let local_pos = self.layout.cursor();
 		let global_pos = self.scene_origin_point + local_pos;
 		let button_rect = VxRect::from_pos_size(global_pos, size);

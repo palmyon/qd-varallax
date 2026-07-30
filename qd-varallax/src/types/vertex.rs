@@ -1,4 +1,4 @@
-use crate::types::{color::VxColor, geometry::{VxSize, VxVec2}};
+use crate::types::{color::VxColor, geometry::{VxSize, VxVec2}, render_commands::{VxRenderModuleId, VxVertexRenderModuleTarget}};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -339,4 +339,17 @@ impl VxSdfVertex {
 	pub fn set_radius(&mut self, radius: f32) {
 		self.radius = radius;
 	}
+}
+
+impl VxVertexRenderModuleTarget for VxVertex {
+	const MODULE_ID: VxRenderModuleId = VxRenderModuleId::VERTEX;
+}
+impl VxVertexRenderModuleTarget for VxSdfVertex {
+	const MODULE_ID: VxRenderModuleId = VxRenderModuleId::SDF;
+}
+impl VxVertexRenderModuleTarget for VxTextureVertex {
+	const MODULE_ID: VxRenderModuleId = VxRenderModuleId::TEXTURE;
+}
+impl VxVertexRenderModuleTarget for VxTextVertex {
+	const MODULE_ID: VxRenderModuleId = VxRenderModuleId::TEXT;
 }

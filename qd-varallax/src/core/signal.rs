@@ -39,18 +39,22 @@ impl VxSignalPolicy for VxLocalSignalPolicy {
 	type VxSignalHandler<H: ?Sized> = Rc<H>;
 	type FnClosure<Sender: ?Sized, M> = dyn Fn(&mut Sender, &M);
 	const TAKE_SNAPSHOT: bool = true;
+	#[inline]
 	fn new<T>(val: T) -> Self::VxSignalContainer<T> {
 		Rc::new(RefCell::new(val))
 	}
+	#[inline]
 	fn new_handler<H: ?Sized>(val: Box<H>) -> Self::VxSignalHandler<H> {
 		Rc::from(val)
 	}
+	#[inline]
 	fn with_mut<T, R>(
 		container: &Self::VxSignalContainer<T>,
 		f: impl FnOnce(&mut T) -> R
 	) -> R {
 		f(&mut container.borrow_mut())
 	}
+	#[inline]
 	fn with<T, R>(
 			container: &Self::VxSignalContainer<T>,
 			f: impl FnOnce(&T) -> R
@@ -66,12 +70,15 @@ impl VxSignalPolicy for VxSharedSignalPolicy {
 	type VxSignalHandler<H: ?Sized> = Arc<H>;
 	type FnClosure<Sender: ?Sized, M> = dyn Fn(&mut Sender, &M) + Send + Sync;
 	const TAKE_SNAPSHOT: bool = true;
+	#[inline]
 	fn new<T>(val: T) -> Self::VxSignalContainer<T> {
 		Arc::new(Mutex::new(val))
 	}
+	#[inline]
 	fn new_handler<H: ?Sized>(val: Box<H>) -> Self::VxSignalHandler<H> {
 		Arc::from(val)
 	}
+	#[inline]
 	fn with_mut<T, R>(
 		container: &Self::VxSignalContainer<T>,
 		f: impl FnOnce(&mut T) -> R
@@ -79,6 +86,7 @@ impl VxSignalPolicy for VxSharedSignalPolicy {
 		f(&mut container.lock()
 			.expect("VxSignal[Shared]> CrititalError: Failed to lock"))
 	}
+	#[inline]
 	fn with<T, R>(
 			container: &Self::VxSignalContainer<T>,
 			f: impl FnOnce(&T) -> R
@@ -94,18 +102,22 @@ impl VxSignalPolicy for VxQuickSignalPolicy {
 	type VxSignalHandler<H: ?Sized> = Rc<H>;
 	type FnClosure<Sender: ?Sized, M> = dyn Fn(&mut Sender, &M);
 	const TAKE_SNAPSHOT: bool = false;
+	#[inline]
 	fn new<T>(val: T) -> Self::VxSignalContainer<T> {
 		Rc::new(RefCell::new(val))
 	}
+	#[inline]
 	fn new_handler<H: ?Sized>(val: Box<H>) -> Self::VxSignalHandler<H> {
 		Rc::from(val)
 	}
+	#[inline]
 	fn with_mut<T, R>(
 		container: &Self::VxSignalContainer<T>,
 		f: impl FnOnce(&mut T) -> R
 	) -> R {
 		f(&mut container.borrow_mut())
 	}
+	#[inline]
 	fn with<T, R>(
 			container: &Self::VxSignalContainer<T>,
 			f: impl FnOnce(&T) -> R
@@ -129,12 +141,12 @@ impl<T> VxSignalState<T> {
 	}
 }
 
-pub struct VxSignal
-<Sender: ?Sized, M: 'static, P: VxSignalPolicy = VxLocalSignalPolicy> {
+pub struct VxSignal<Sender: ?Sized, M: 'static, P: VxSignalPolicy = VxLocalSignalPolicy> {
 	state: P::VxSignalContainer<VxSignalState<P::VxSignalHandler<P::FnClosure<Sender, M>>>>,
 	_marker: PhantomData<P>,
 }
 impl<Sender: ?Sized, M: 'static, S: VxSignalPolicy> Clone for VxSignal<Sender, M, S> {
+	#[inline]
 	fn clone(&self) -> Self {
 		Self {
 			state: self.state.clone(),
@@ -143,6 +155,7 @@ impl<Sender: ?Sized, M: 'static, S: VxSignalPolicy> Clone for VxSignal<Sender, M
 	}
 }
 impl<Sender: ?Sized, M: 'static, S: VxSignalPolicy> VxSignal<Sender, M, S> {
+	#[inline]
 	pub fn new() -> Self {
 		Self {
 			state: S::new(VxSignalState::new()),
@@ -164,7 +177,7 @@ impl<Sender: ?Sized, M: 'static, S: VxSignalPolicy> VxSignal<Sender, M, S> {
 				)
 			});
 			if let Some(shot) = snapshot {
-				shot.iter().for_each(|f| f(sender, msg));
+				shot.into_iter().for_each(|f| f(sender, msg));
 			}
 		} else {
 			S::with_mut(&self.state, |v| {
@@ -176,11 +189,13 @@ impl<Sender: ?Sized, M: 'static, S: VxSignalPolicy> VxSignal<Sender, M, S> {
 			})
 		}
 	}
+	#[inline]
 	pub fn internal_connect(&self, f: Box<S::FnClosure<Sender, M>>) -> VxGenIndex {
 		S::with_mut(&self.state, |v| {
 			v.handler.insert(S::new_handler(f))
 		})
 	}
+	#[inline]
 	pub fn internal_disconnect(&self, id: VxGenIndex) -> bool {
 		S::with_mut(
 			&self.state,
@@ -202,7 +217,7 @@ impl<Sender: ?Sized, M: 'static, S: VxSignalPolicy> VxSignal<Sender, M, S> {
 		})
 	}
 	#[inline]
-	pub fn internal_set_enabled(&mut self, enabled: bool) {
+	pub fn internal_set_enabled(&self, enabled: bool) {
 		S::with_mut(&self.state, |v| {
 			v.enabled = enabled;
 		});
@@ -248,12 +263,36 @@ macro_rules! vx_signal {
 		}
 
 		impl<Sender: ?Sized> Clone for $name<Sender> {
+			#[inline]
 			fn clone(&self) -> Self {
 				Self { inner: self.inner.clone() }
 			}
 		}
 
 		impl<Sender: ?Sized> $name<Sender> {
+			/// ## QD-Varallax> VxSignal> connect()
+			/// connect a signal closure.
+			/// 
+			/// # Usages
+			/// ```no_run
+			/// pub struct Sender {
+			/// 	bar: i32,
+			/// }
+			/// impl Sender {
+			/// 	pub fn add_bar(&mut self, val: i32) {
+			/// 		self.bar += val;
+			/// 	}
+			/// }
+			/// 
+			/// vx_signal!(pub struct Foo >> String);
+			/// 
+			/// let signal = Foo::<Sender>::new();
+			/// signal.connect(|sender, text| {
+			/// 	sender.add_var(1);
+			/// 	println!("{}", text);
+			/// });
+			/// ```
+			#[inline]
 			pub fn connect<F>(
 				&self, f: F
 			) -> $crate::types::gen_vector::VxGenIndex
@@ -272,12 +311,14 @@ macro_rules! vx_signal {
 		}
 
 		impl<Sender: ?Sized + Send + Sync> Clone for $name<Sender> {
+			#[inline]
 			fn clone(&self) -> Self {
 				Self { inner: self.inner.clone() }
 			}
 		}
 
 		impl<Sender: ?Sized + Send + Sync> $name<Sender> {
+			#[inline]
 			pub fn connect<F>(
 				&self, f: F
 			) -> $crate::types::gen_vector::VxGenIndex
@@ -294,12 +335,14 @@ macro_rules! vx_signal {
 		}
 
 		impl<Sender: ?Sized> Clone for $name<Sender> {
+			#[inline]
 			fn clone(&self) -> Self {
 				Self { inner: self.inner.clone() }
 			}
 		}
 
 		impl<Sender: ?Sized> $name<Sender> {
+			#[inline]
 			pub fn connect<F>(
 				&self, f: F
 			) -> $crate::types::gen_vector::VxGenIndex
@@ -315,30 +358,30 @@ macro_rules! vx_signal {
 #[macro_export]
 macro_rules! signal_functions {
 	($msg:ty) => {
-		#[inline(always)]
+		#[inline]
 		pub fn new() -> Self {
 			Self {
 				inner: $crate::core::signal::VxSignal::new(),
 			}
 		}
-		#[inline(always)]
+		#[inline]
 		pub fn emit(&self, sender: &mut Sender, msg: &$msg) {
 			self.inner.emit(sender, msg);
 		}
-		#[inline(always)]
+		#[inline]
 		pub fn disconnect(&self, id: $crate::types::gen_vector::VxGenIndex) -> bool {
 			self.inner.internal_disconnect(id)
 		}
-		#[inline(always)]
+		#[inline]
 		pub fn clear(&self) -> usize {
 			self.inner.internal_clear()
 		}
-		#[inline(always)]
+		#[inline]
 		pub fn slot_count(&self) -> usize {
 			self.inner.internal_slot_count()
 		}
-		#[inline(always)]
-		pub fn set_enabled(&mut self, enabled: bool) {
+		#[inline]
+		pub fn set_enabled(&self, enabled: bool) {
 			self.inner.internal_set_enabled(enabled)
 		}
 		#[inline]
