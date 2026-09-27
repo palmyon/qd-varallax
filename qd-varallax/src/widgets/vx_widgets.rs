@@ -1,60 +1,49 @@
 
-use qd_varallax_macro::VxWidgetDerive;
+use qd_varallax_macro::VxWidgetImpl;
 
 use crate::{
-	abstractions::abstract_widgets::*,
-	types::{
-		color::VxColor,
-		geometry::VxRect,
-		texture::VxTexture
+	abstractions::{abstract_layouts::VxSizeHint, abstract_widgets::*}, types::{
+		color::VxColor, event::VxEventResult, geometry::VxRect, texture::VxTexture
 	},
 };
 
 
-#[derive(VxWidgetDerive)]
+#[derive(VxWidgetImpl)]
 pub struct VxRectWidget {
-	#[vx(Stat)]
+	#[attr(stat)]
 	stat: VxWidgetStats,
 	rect: VxRect,
 	color: VxColor,
 }
 
 impl VxWidget for VxRectWidget {
-	fn bounding_rect(&self) -> VxRect {
-		self.rect.with_transform(self.transform())
-	}
-	fn size_hint(&mut self, _: &mut crate::abstractions::abstract_layouts::VxBoundingRectCreator) -> Option<crate::types::geometry::VxSize> {
-		Some(self.rect.size())
+	fn size_hint(&mut self, _: &mut crate::abstractions::abstract_layouts::VxBoundingRectCreator) -> VxSizeHint {
+		VxSizeHint::Content(self.rect.size())
 	}
 
 	fn paint(&mut self, painter: &mut crate::painter::painter::VxPainter) {
-		painter.push_tranform(self.transform());
-		painter.draw_rect(self.rect, self.color);
-		painter.pop_transform();
+		painter.draw_rect(self.bounding_rect(), self.color);
+	}
+
+	fn mouse_press_event(&mut self, event: &crate::types::event::VxMouseEvent) -> VxEventResult {
+		println!("{:?}", event.pos());
+		VxEventResult::Accept
 	}
 }
 
 impl VxRectWidget {
 	pub fn new(rect: VxRect, color: VxColor, parent: Option<VxWidgetId>) -> Self {
-		let mut new = Self {
+		Self {
 			stat: VxWidgetStats::new(parent),
 			rect,
 			color,
-		};
-		new.set_rect(rect);
-		new
-	}
-	pub fn set_rect(&mut self, rect: VxRect) {
-		self.rect = rect;
-		let mut t = self.transform();
-		t.set_size(rect.size());
-		self.set_transform(t);
+		}
 	}
 }
 
-#[derive(VxWidgetDerive)]
+#[derive(VxWidgetImpl)]
 pub struct VxTextureWidget {
-	#[vx(Stat)]
+	#[attr(stat)]
 	stat: VxWidgetStats,
 	rect: VxRect,
 	texture: VxTexture,
@@ -62,20 +51,15 @@ pub struct VxTextureWidget {
 }
 
 impl VxWidget for VxTextureWidget {
-	fn bounding_rect(&self) -> VxRect {
-		self.rect.with_transform(self.transform())
-	}
-	fn size_hint(&mut self, _: &mut crate::abstractions::abstract_layouts::VxBoundingRectCreator) -> Option<crate::types::geometry::VxSize> {
-		Some(self.rect.size())
+	fn size_hint(&mut self, _: &mut crate::abstractions::abstract_layouts::VxBoundingRectCreator) -> VxSizeHint {
+		VxSizeHint::Content(self.rect.size())
 	}
 	fn paint(&mut self, painter: &mut crate::painter::painter::VxPainter) {
-		painter.push_tranform(self.transform());
 		painter.draw_texture(
 			self.rect,
 			VxColor::from_hex(0xFFFFFF).with_alpha(self.opacity),
 			&self.texture()
 		);
-		painter.pop_transform();
 	}
 
 	fn register_texture_event(&mut self, gpu: &crate::core::gpu_resource::VxGpuResource, system: &mut crate::core::systems::VxTextureSystem) {

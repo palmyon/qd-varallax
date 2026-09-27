@@ -1,18 +1,16 @@
-use qd_varallax_macro::VxWidgetDerive;
+use qd_varallax_macro::VxWidgetImpl;
 
 use crate::{
-	abstractions::abstract_widgets::*, core::glyph::VxFont, types::{
-		color::VxColor,
-	}, vx_widget_signals,
+	abstractions::{abstract_layouts::VxSizeHint, abstract_widgets::*}, core::glyph::VxFont, types::color::VxColor, vx_widget_signals,
 };
 
 vx_widget_signals!(pub struct VxTextSignals {
 	text_changed: VxTextChangedSignal >> String,
 });
 
-#[derive(VxWidgetDerive)]
+#[derive(VxWidgetImpl)]
 pub struct VxTextWidget {
-	#[vx(Stat)]
+	#[attr(stat)]
 	stats: VxWidgetStats,
 	text: String,
 	last_text: String,
@@ -23,15 +21,16 @@ pub struct VxTextWidget {
 }
 
 impl VxWidget for VxTextWidget {
-	fn size_hint(&mut self, creator: &mut crate::abstractions::abstract_layouts::VxBoundingRectCreator) -> Option<crate::types::geometry::VxSize> {
+	fn size_hint(&mut self, creator: &mut crate::abstractions::abstract_layouts::VxBoundingRectCreator) -> VxSizeHint {
 		if self.change_bounding_rect {
 			let rect = creator.create_text_bounding_rect(&self.text, self.font);
+			self.stats_mut().set_block_dirty(true);
 			self.stats_mut().set_bounding_rect(rect);
+			self.stats_mut().set_block_dirty(false);
 		}
-		Some(self.bounding_rect().size())
+		VxSizeHint::Content(self.bounding_rect().size())
 	}
 	fn paint(&mut self, painter: &mut crate::painter::painter::VxPainter) {
-		painter.push_tranform(self.transform());
 		painter.draw_text(
 			&self.text,
 			self.font,
@@ -41,7 +40,6 @@ impl VxWidget for VxTextWidget {
 			1.5
 		);
 		painter.draw_rect(self.bounding_rect(), VxColor::from_hex(0xFF0000).with_alpha(0.6));
-		painter.pop_transform();
 	}
 }
 

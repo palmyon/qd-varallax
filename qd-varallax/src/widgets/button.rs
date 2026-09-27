@@ -1,7 +1,7 @@
-use qd_varallax_macro::VxWidgetDerive;
+use qd_varallax_macro::VxWidgetImpl;
 
 use crate::{
-	abstractions::abstract_widgets::*, core::glyph::VxFont, types::{color::VxColor, event::VxEventResult, geometry::{
+	abstractions::{abstract_layouts::VxSizeHint, abstract_widgets::*}, core::glyph::VxFont, types::{color::VxColor, event::VxEventResult, geometry::{
 		VxRectR,
 		VxVec2
 	}, input::VxMouseButton, style::VxSdfStyle}, vx_widget_signals, widgets::{text::VxTextWidget, theme::{
@@ -83,9 +83,9 @@ impl VxButtonState {
 	}
 }
 
-#[derive(VxWidgetDerive)]
+#[derive(VxWidgetImpl)]
 pub struct VxButtonWidget {
-	#[vx(Stat)]
+	#[attr(stat)]
 	stats: VxWidgetStats,
 	rect: VxRectR,
 	style: VxButtonStyle,
@@ -94,8 +94,8 @@ pub struct VxButtonWidget {
 }
 
 impl VxWidget for VxButtonWidget {
-	fn size_hint(&mut self, _: &mut crate::abstractions::abstract_layouts::VxBoundingRectCreator) -> Option<crate::types::geometry::VxSize> {
-		Some(self.bounding_rect().size())
+	fn size_hint(&mut self, _: &mut crate::abstractions::abstract_layouts::VxBoundingRectCreator) -> VxSizeHint {
+		VxSizeHint::ChildrenSize { padding: 2.0 }
 	}
 	fn paint(&mut self, painter: &mut crate::painter::painter::VxPainter) {
 		let draw_color = if self.state.is_pressed() {
@@ -106,7 +106,6 @@ impl VxWidget for VxButtonWidget {
 			self.style.theme.w_primary()
 		};
 
-		painter.push_tranform(self.transform());
 		painter.draw_sdf_rect(VxSdfStyle::new(
 			VxRectR::new(self.bounding_rect(), self.rect.corner_radius()),
 			draw_color,
@@ -114,7 +113,6 @@ impl VxWidget for VxButtonWidget {
 			5.0,
 			5.0
 		));
-		painter.pop_transform();
 	}
 
 	fn mouse_press_event(&mut self, event: &crate::types::event::VxMouseEvent) -> VxEventResult {

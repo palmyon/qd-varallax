@@ -1,11 +1,11 @@
-use qd_varallax_macro::VxWidgetDerive;
+use qd_varallax_macro::VxWidgetImpl;
 
-use crate::{abstractions::abstract_widgets::*, core::immediate::VxImmediateContext, types::{color::VxColor, geometry::VxRect, render_commands::VxRenderMode}};
+use crate::{abstractions::{abstract_layouts::VxSizeHint, abstract_widgets::*}, core::immediate::VxImmediateContext, types::{color::VxColor, geometry::VxRect, render_commands::VxRenderMode}};
 
 
-#[derive(VxWidgetDerive)]
+#[derive(VxWidgetImpl)]
 pub struct VxImmediateAreaWidget {
-	#[vx(Stat)]
+	#[attr(stat)]
 	stats: VxWidgetStats,
 	area_rect: VxRect,
 	ui_closure: Box<dyn FnMut(&mut VxImmediateContext)>,
@@ -13,15 +13,13 @@ pub struct VxImmediateAreaWidget {
 
 impl VxWidget for VxImmediateAreaWidget {
 	fn bounding_rect(&self) -> VxRect {
-		self.area_rect.with_transform(self.transform())
+		self.area_rect
 	}
-	fn size_hint(&mut self, _: &mut crate::abstractions::abstract_layouts::VxBoundingRectCreator) -> Option<crate::types::geometry::VxSize> {
-		Some(self.area_rect.size())
+	fn size_hint(&mut self, _: &mut crate::abstractions::abstract_layouts::VxBoundingRectCreator) -> VxSizeHint {
+		VxSizeHint::Content(self.area_rect.size())
 	}
 	fn paint(&mut self, painter: &mut crate::painter::painter::VxPainter) {
-		painter.push_tranform(self.transform());
 		painter.draw_rect(self.bounding_rect(), VxColor::from_hex(0xFF0000).with_alpha(0.6));
-		painter.pop_transform();
 	}
 	fn immediate_paint(&mut self, input: &crate::types::input::VxInputState, painter: &mut crate::painter::painter::VxPainter) {
 		let mut ctx = VxImmediateContext::new(

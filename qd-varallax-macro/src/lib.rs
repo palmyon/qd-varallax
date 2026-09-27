@@ -2,8 +2,8 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{Data, DeriveInput, Fields, parse_macro_input};
 
-#[proc_macro_derive(VxWindowDerive, attributes(vx))]
-pub fn vx_window_derive(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(VxWindowImpl, attributes(attr))]
+pub fn vx_window_impl(input: TokenStream) -> TokenStream {
 	let input = parse_macro_input!(input as DeriveInput);
 	let name = input.ident;
 
@@ -16,11 +16,11 @@ pub fn vx_window_derive(input: TokenStream) -> TokenStream {
 				let field_name = field.ident.unwrap();
 
 				for attr in field.attrs {
-					if attr.path().is_ident("vx") {
+					if attr.path().is_ident("attr") {
 						let _ = attr.parse_nested_meta(|meta| {
-							if meta.path.is_ident("Stat") {
+							if meta.path.is_ident("stat") {
 								stat_field = Some(field_name.clone());
-							} else if meta.path.is_ident("WindowAttr") {
+							} else if meta.path.is_ident("w_attr") {
 								attr_field = Some(field_name.clone());
 							}
 							Ok(())
@@ -31,8 +31,8 @@ pub fn vx_window_derive(input: TokenStream) -> TokenStream {
 		}
 	}
 	
-	let stat = stat_field.expect("VxWindowDerive> Need #[vx(Stat)] on [Option<VxWindowStats>].");
-	let window_attr = attr_field.expect("VxWindowDerive> Need #[vx(WindowAttr)] on [VxWindowAttributes].");
+	let stat = stat_field.expect("VxWindowImpl> Need #[attr(stat)] on [Option<VxWindowStats>].");
+	let window_attr = attr_field.expect("VxWindowImpl> Need #[attr(w_attr)] on [VxWindowAttributes].");
 
 	let expanded = quote! {
 		impl VxWindowInternal for #name {
@@ -70,8 +70,8 @@ pub fn vx_window_derive(input: TokenStream) -> TokenStream {
 	TokenStream::from(expanded)
 }
 
-#[proc_macro_derive(VxWidgetDerive, attributes(vx))]
-pub fn vx_widget_derive(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(VxWidgetImpl, attributes(attr))]
+pub fn vx_widget_impl(input: TokenStream) -> TokenStream {
 	let input = parse_macro_input!(input as DeriveInput);
 	let name = input.ident;
 
@@ -83,9 +83,9 @@ pub fn vx_widget_derive(input: TokenStream) -> TokenStream {
 				let field_name = field.ident.unwrap();
 
 				for attr in field.attrs {
-					if attr.path().is_ident("vx") {
+					if attr.path().is_ident("attr") {
 						let _ = attr.parse_nested_meta(|meta|{
-							if meta.path.is_ident("Stat") {
+							if meta.path.is_ident("stat") {
 								stat_field = Some(field_name.clone());
 							}
 							Ok(())
@@ -96,10 +96,10 @@ pub fn vx_widget_derive(input: TokenStream) -> TokenStream {
 		}
 	}
 
-	let stat = stat_field.expect("VxWidgetDerive> Need #[vx(Stat)] on [VxWidgetStats].");
+	let stat = stat_field.expect("VxWidgetImpl> Need #[attr(stat)] on [VxWidgetStats].");
 
 	let expanded = quote! {
-		impl VxWidgetInternal for #name {
+		impl VxWidgetAccessor for #name {
 			#[inline]
 			fn stats(&self) -> &VxWidgetStats { &self.#stat }
 			#[inline]
@@ -108,6 +108,49 @@ pub fn vx_widget_derive(input: TokenStream) -> TokenStream {
 			fn as_any(&self) -> &dyn ::std::any::Any { self }
 			#[inline]
 			fn as_any_mut(&mut self) -> &mut dyn ::std::any::Any { self }
+		}
+	};
+	TokenStream::from(expanded)
+}
+
+#[proc_macro_derive(VxBoxLayoutImpl, attributes(attr_layout))]
+pub fn vx_box_layout_impl(input: TokenStream) -> TokenStream {
+	let input = parse_macro_input!(input as DeriveInput);
+	let name = input.ident;
+
+	let mut stat_field = None;
+
+	if let Data::Struct(data) = input.data {
+		if let Fields::Named(fields) = data.fields {
+			for field in fields.named {
+				let field_name = field.ident.unwrap();
+
+				for attr in field.attrs {
+					if attr.path().is_ident("attr_layout") {
+						let _ = attr.parse_nested_meta(|meta| {
+							if meta.path.is_ident("stat") {
+								stat_field = Some(field_name.clone());
+							}
+							Ok(())
+						});
+					}
+				}
+			}
+		}
+	}
+
+	let stat = stat_field.expect("VxBoxLayoutImpl> Need #[attr_layout(stat)] on [VxBoxLayoutStats].");
+
+	let expanded = quote! {
+		impl VxBoxLayoutAccessor for #name {
+			#[inline]
+			fn layout_stats(&self) -> &VxBoxLayoutStats { &self.#stat }
+			#[inline]
+			fn layout_stats_mut(&mut self) -> &mut VxBoxLayoutStats { &mut self.#stat }
+			#[inline]
+			fn as_any_layout(&self) -> &dyn ::std::any::Any { self }
+			#[inline]
+			fn as_any_layout_mut(&mut self) -> &mut dyn ::std::any::Any { self }
 		}
 	};
 	TokenStream::from(expanded)

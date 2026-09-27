@@ -2,15 +2,11 @@ use ahash::{AHashMap, AHashSet};
 
 use crate::{
 	abstractions::abstract_widgets::{
-		VxWidget,
-		VxWidgetId,
-		VxWidgetLayoutExt
-	},
-	core::{
+		VxWidget, VxWidgetId, VxWidgetLayoutExt, VxWidgetStatsWrapExt
+	}, core::{
 		glyph::VxFont,
 		resource::VxAppResource
-	},
-	types::{
+	}, types::{
 		gen_vector::VxGenVector,
 		geometry::{
 			VxRect,
@@ -33,6 +29,30 @@ impl<'a> VxBoundingRectCreator<'a> {
 	}
 }
 
+#[derive(Clone, Copy)]
+pub struct VxImmediateLayoutContext {
+	cursor: VxVec2,
+	available_size: VxSize,
+}
+impl VxImmediateLayoutContext {
+	#[inline]
+	pub const fn new(available_size: VxSize) -> Self {
+		Self {
+			cursor: VxVec2::new(0.0, 0.0),
+			available_size,
+		}
+	}
+	#[inline]
+	pub const fn cursor(&self) -> VxVec2 {
+		self.cursor
+	}
+	#[inline]
+	pub const fn set_cursor(&mut self, cursor: VxVec2) {
+		self.cursor = cursor;
+	}
+}
+
+// Spatial Anchor Layout System ========================================
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
 pub enum VxSpatialLayoutAnchor {
 	#[default]
@@ -47,8 +67,8 @@ pub enum VxSpatialLayoutAxisRule {
 	Content { offset: f32 },
 	Ratio { offset: f32, ratio: f32 },
 	Align {
-		target_edge: VxSpatialLayoutEdgeAlignment,
-		my_edge: VxSpatialLayoutEdgeAlignment,
+		target_edge: VxSpatialLayoutEdge,
+		my_edge: VxSpatialLayoutEdge,
 		offset: f32,
 		size: VxSpatialLayoutSizeRule,
 	},
@@ -56,7 +76,7 @@ pub enum VxSpatialLayoutAxisRule {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
-pub enum VxSpatialLayoutEdgeAlignment {
+pub enum VxSpatialLayoutEdge {
 	/// AxisX => Left, AxisY => Top
 	Start,
 	#[default]
@@ -72,16 +92,14 @@ pub enum VxSpatialLayoutSizeRule {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct VxLayout {
+pub struct VxSpatialLayout {
 	anchor_x: VxSpatialLayoutAnchor,
 	rule_x: VxSpatialLayoutAxisRule,
 	anchor_y: VxSpatialLayoutAnchor,
 	rule_y: VxSpatialLayoutAxisRule,
-
-	intrinsic_size_cache: Option<VxSize>,
 }
 
-impl Default for VxLayout {
+impl Default for VxSpatialLayout {
 	#[inline]
 	fn default() -> Self {
 		Self {
@@ -89,32 +107,30 @@ impl Default for VxLayout {
 			rule_x: VxSpatialLayoutAxisRule::Fixed { offset: 0.0, size: 100.0 },
 			anchor_y: VxSpatialLayoutAnchor::ParentWidget,
 			rule_y: VxSpatialLayoutAxisRule::Fixed { offset: 0.0, size: 100.0 },
-			intrinsic_size_cache: None,
 		}
 	}
 }
 
-impl VxLayout {
+impl VxSpatialLayout {
 	pub const fn new() -> Self {
 		Self {
 			anchor_x: VxSpatialLayoutAnchor::ParentWidget,
 			rule_x: VxSpatialLayoutAxisRule::Align {
-				target_edge: VxSpatialLayoutEdgeAlignment::Center,
-				my_edge: VxSpatialLayoutEdgeAlignment::Center,
+				target_edge: VxSpatialLayoutEdge::Center,
+				my_edge: VxSpatialLayoutEdge::Center,
 				offset: 0.0,
 				size: VxSpatialLayoutSizeRule::Content,
 			},
 			anchor_y: VxSpatialLayoutAnchor::ParentWidget,
 			rule_y: VxSpatialLayoutAxisRule::Align {
-				target_edge: VxSpatialLayoutEdgeAlignment::Center,
-				my_edge: VxSpatialLayoutEdgeAlignment::Center,
+				target_edge: VxSpatialLayoutEdge::Center,
+				my_edge: VxSpatialLayoutEdge::Center,
 				offset: 0.0,
 				size: VxSpatialLayoutSizeRule::Content,
 			},
-			intrinsic_size_cache: None,
 		}
 	}
-	// (pos(min), size) for 1D 
+	// (pos(min), size) for 1D
 	pub fn compute_axis_1d(
 		rule: VxSpatialLayoutAxisRule,
 		target_min: f32,
@@ -139,14 +155,14 @@ impl VxLayout {
 					VxSpatialLayoutSizeRule::Content => intrinsic_size.unwrap_or(0.0)
 				}.max(0.0);
 				let target_pos = match target_edge {
-					VxSpatialLayoutEdgeAlignment::Start => target_min,
-					VxSpatialLayoutEdgeAlignment::Center => target_min + target_size * 0.5,
-					VxSpatialLayoutEdgeAlignment::End => target_min + target_size,
+					VxSpatialLayoutEdge::Start => target_min,
+					VxSpatialLayoutEdge::Center => target_min + target_size * 0.5,
+					VxSpatialLayoutEdge::End => target_min + target_size,
 				};
 				let my_min = match my_edge {
-					VxSpatialLayoutEdgeAlignment::Start => target_pos + offset,
-					VxSpatialLayoutEdgeAlignment::Center => target_pos - (my_size * 0.5) + offset,
-					VxSpatialLayoutEdgeAlignment::End => target_pos - my_size + offset,
+					VxSpatialLayoutEdge::Start => target_pos + offset,
+					VxSpatialLayoutEdge::Center => target_pos - (my_size * 0.5) + offset,
+					VxSpatialLayoutEdge::End => target_pos - my_size + offset,
 			};
 				(my_min, my_size)
 			}
@@ -201,18 +217,19 @@ impl<'a> VxSpatialLayoutVisitingGuard<'a> {
 
 pub struct VxSpatialLayoutResolver {
 	computed_rects: AHashMap<VxWidgetId, VxRect>,
+	last_computed_rects: Vec<(VxWidgetId, VxRect)>,
 	visiting: AHashSet<VxWidgetId>,
 }
 
 impl VxSpatialLayoutResolver {
 	#[inline]
 	pub fn new() -> Self {
-		Self { computed_rects: AHashMap::new(), visiting: AHashSet::new() }
+		Self { computed_rects: AHashMap::new(), last_computed_rects: Vec::new(), visiting: AHashSet::new() }
 	}
 
 	pub fn resolve_at(
 		&mut self,
-		bounging_rect_creator: &mut VxBoundingRectCreator,
+		bounding_rect_creator: &mut VxBoundingRectCreator,
 		target_widget_id: VxWidgetId,
 		all_widgets: &mut VxGenVector<Box<dyn VxWidget>>,
 		window_size: VxSize,
@@ -226,11 +243,11 @@ impl VxSpatialLayoutResolver {
 			return None;
 		}
 
-		let size_hint: Option<VxSize>;
-		{
-			let widget = all_widgets.get_mut(target_widget_id.id())?;
-			size_hint = widget.size_hint(bounging_rect_creator);
-		}
+		let size_hint: Option<VxSize> = None;
+		// {
+		// 	let widget = all_widgets.get_mut(target_widget_id.id())?;
+		//	size_hint = widget.size_hint(bounding_rect_creator);
+		// }
 		
 		let widget = all_widgets.get(target_widget_id.id())?;
 		self.visiting.insert(target_widget_id);
@@ -244,14 +261,14 @@ impl VxSpatialLayoutResolver {
 		let parent = widget.parent();
 
 		let (x_min, x_size) = guard.resolver.get_anchor_bounds_1d(
-			bounging_rect_creator,
+			bounding_rect_creator,
 			anchor_x,
 			parent,
 			true,
 			all_widgets,
 			window_size
 		);
-		let (x, width) = VxLayout::compute_axis_1d(
+		let (x, width) = VxSpatialLayout::compute_axis_1d(
 			rule_x,
 			x_min,
 			x_size,
@@ -259,14 +276,14 @@ impl VxSpatialLayoutResolver {
 		);
 
 		let (y_min, y_size) = guard.resolver.get_anchor_bounds_1d(
-			bounging_rect_creator,
+			bounding_rect_creator,
 			anchor_y,
 			parent,
 			false,
 			all_widgets,
 			window_size
 		);
-		let (y, height) = VxLayout::compute_axis_1d(
+		let (y, height) = VxSpatialLayout::compute_axis_1d(
 			rule_y,
 			y_min,
 			y_size,
@@ -275,13 +292,14 @@ impl VxSpatialLayoutResolver {
 
 		let final_rect = VxRect::new(x, y, width, height);
 		guard.resolver.computed_rects.insert(target_widget_id, final_rect);
+		guard.resolver.last_computed_rects.push((target_widget_id, final_rect));
 
 		Some(final_rect)
 	}
 
 	fn get_anchor_bounds_1d(
 		&mut self,
-		bounging_rect_creator: &mut VxBoundingRectCreator,
+		bounding_rect_creator: &mut VxBoundingRectCreator,
 		anchor: VxSpatialLayoutAnchor,
 		parent_id: Option<VxWidgetId>,
 		is_x: bool,
@@ -298,7 +316,7 @@ impl VxSpatialLayoutResolver {
 			}
 			VxSpatialLayoutAnchor::ParentWidget => {
 				if let Some(parent) = parent_id {
-					if let Some(parent_rect) = self.resolve_at(bounging_rect_creator, parent, widgets, window_size) {
+					if let Some(parent_rect) = self.resolve_at(bounding_rect_creator, parent, widgets, window_size) {
 						return if is_x {
 							(parent_rect.x(), parent_rect.width())
 						} else {
@@ -306,17 +324,17 @@ impl VxSpatialLayoutResolver {
 						}
 					}
 				}
-				self.get_anchor_bounds_1d(bounging_rect_creator, VxSpatialLayoutAnchor::Window, None, is_x, widgets, window_size)
+				self.get_anchor_bounds_1d(bounding_rect_creator, VxSpatialLayoutAnchor::Window, None, is_x, widgets, window_size)
 			}
 			VxSpatialLayoutAnchor::Widget(target_id) => {
-				if let Some(target_rect) = self.resolve_at(bounging_rect_creator, target_id, widgets, window_size) {
+				if let Some(target_rect) = self.resolve_at(bounding_rect_creator, target_id, widgets, window_size) {
 					if is_x {
 						(target_rect.x(), target_rect.width())
 					} else {
 						(target_rect.y(), target_rect.height())
 					}
 				} else {
-					self.get_anchor_bounds_1d(bounging_rect_creator, VxSpatialLayoutAnchor::ParentWidget, parent_id, is_x, widgets, window_size)
+					self.get_anchor_bounds_1d(bounding_rect_creator, VxSpatialLayoutAnchor::ParentWidget, parent_id, is_x, widgets, window_size)
 				}
 			}
 		}
@@ -334,26 +352,260 @@ impl VxSpatialLayoutResolver {
 	}
 }
 
+// =================================================================
 
-#[derive(Clone, Copy)]
-pub struct VxImmediateLayoutContext {
-	cursor: VxVec2,
-	available_size: VxSize,
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum VxSizeHint {
+	None,
+	Content(VxSize),
+	ChildrenSize { padding: f32 },
 }
-impl VxImmediateLayoutContext {
+impl VxSizeHint {
+	pub fn resolve_size_hint(
+		id: VxWidgetId,
+		widgets: &mut VxGenVector<Box<dyn VxWidget>>,
+		creator: &mut VxBoundingRectCreator
+	) -> VxSize {
+		let mut result = VxRect::default();
+		let size_hint = widgets.get_mut(id)
+			.map(|w| w.size_hint(creator))
+			.unwrap_or_else(|| VxSizeHint::Content(VxSize::new(100.0, 30.0)));
+		let mut pad = 0.0;
+		match size_hint {
+			VxSizeHint::None => {},
+			VxSizeHint::Content(size) => result = result.union(VxRect::from_pos_size(Default::default(), size)),
+			VxSizeHint::ChildrenSize { padding } => {
+				let Some(widget) = widgets.get(id) else { return result.size(); };
+				pad = padding;
+				let children = widget.children().clone();
+				for child in children {
+					result = result.union(VxRect::from_pos_size(Default::default(), Self::resolve_size_hint(child, widgets, creator)));
+				}
+			}
+		}
+
+		VxSize::new(result.size().width() + pad, result.size().height() + pad)
+	}
+
+	pub fn union_children_size_hint(
+		children: &[VxWidgetId],
+		widgets: &mut VxGenVector<Box<dyn VxWidget>>,
+		creator: &mut VxBoundingRectCreator,
+	) -> VxSize {
+		let mut result = VxRect::default();
+		for &child in children {
+			result = result.union(VxRect::from_pos_size(Default::default(), Self::resolve_size_hint(child, widgets, creator)));
+		}
+
+		result.size()
+	}
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+pub enum VxOrientation {
+	#[default]
+	Horizontal,
+	Vertical,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+pub enum VxAlignment {
+	Start,
+	Center,
+	End,
+	#[default]
+	Stretch,
+}
+
+#[derive(Default, Clone, Copy)]
+pub struct VxBoxLayoutStats {
+	orientation: VxOrientation,
+	main_alignment: VxAlignment,
+	cross_alignment: VxAlignment,
+	spacing: f32,
+	padding: f32,
+}
+
+impl VxBoxLayoutStats {
 	#[inline]
-	pub const fn new(available_size: VxSize) -> Self {
+	pub fn new() -> Self {
 		Self {
-			cursor: VxVec2::new(0.0, 0.0),
-			available_size,
+			orientation: VxOrientation::Vertical,
+			main_alignment: VxAlignment::Stretch,
+			cross_alignment: VxAlignment::Stretch,
+			spacing: 10.0,
+			padding: 5.0,
 		}
 	}
+}
+
+// getter and setter
+impl VxBoxLayoutStats {
 	#[inline]
-	pub const fn cursor(&self) -> VxVec2 {
-		self.cursor
+	pub const fn orientation(&self) -> VxOrientation { self.orientation }
+	#[inline]
+	pub const fn main_alignment(&self) -> VxAlignment { self.main_alignment }
+	#[inline]
+	pub const fn cross_alignment(&self) -> VxAlignment { self.cross_alignment }
+	#[inline]
+	pub const fn spacing(&self) -> f32 { self.spacing }
+	#[inline]
+	pub const fn padding(&self) -> f32 { self.padding }
+
+	#[inline]
+	pub const fn set_orientation(&mut self, orientation: VxOrientation) {
+		self.orientation = orientation;
 	}
 	#[inline]
-	pub const fn set_cursor(&mut self, cursor: VxVec2) {
-		self.cursor = cursor;
+	pub const fn set_main_alignment(&mut self, main_alignment: VxAlignment) {
+		self.main_alignment = main_alignment;
+	}
+	#[inline]
+	pub const fn set_cross_alignment(&mut self, cross_alignment: VxAlignment) {
+		self.cross_alignment = cross_alignment;
+	}
+	#[inline]
+	pub const fn set_spacing(&mut self, spacing: f32) {
+		self.spacing = spacing;
+	}
+	#[inline]
+	pub const fn set_padding(&mut self, padding: f32) {
+		self.padding = padding;
+	}
+}
+
+pub trait VxBoxLayoutAccessor: std::any::Any {
+	fn layout_stats(&self) -> &VxBoxLayoutStats;
+	fn layout_stats_mut(&mut self) -> &mut VxBoxLayoutStats;
+	fn as_any_layout(&self) -> &dyn std::any::Any;
+	fn as_any_layout_mut(&mut self) -> &mut dyn std::any::Any;
+}
+
+pub trait VxBoxLayout: VxWidget + VxBoxLayoutAccessor {
+	fn layout_fn(&self) -> (
+		fn(
+			&VxBoxLayoutStats,
+			&mut VxBoundingRectCreator<'_>,
+			VxRect,&[VxWidgetId],
+			&mut VxGenVector<Box<dyn VxWidget>>,
+		) -> Vec<(VxWidgetId, VxRect)>,
+		VxBoxLayoutStats
+	);
+}
+
+pub trait VxBoxLayoutStatsWrapExt: VxBoxLayout {
+	#[inline]
+	fn orientation(&self) -> VxOrientation { self.layout_stats().orientation() }
+	#[inline]
+	fn main_alignment(&self) -> VxAlignment { self.layout_stats().main_alignment() }
+	#[inline]
+	fn cross_alignment(&self) -> VxAlignment { self.layout_stats().cross_alignment() }
+	#[inline]
+	fn spacing(&self) -> f32 { self.layout_stats().spacing() }
+	#[inline]
+	fn padding(&self) -> f32 { self.layout_stats().padding() }
+
+	#[inline]
+	fn set_orientation(&mut self, orientation: VxOrientation) {
+		self.layout_stats_mut().set_orientation(orientation);
+	}
+	#[inline]
+	fn set_main_alignment(&mut self, main_alignment: VxAlignment) {
+		self.layout_stats_mut().set_main_alignment(main_alignment)
+	}
+	#[inline]
+	fn set_cross_alignment(&mut self, cross_alignment: VxAlignment) {
+		self.layout_stats_mut().set_cross_alignment(cross_alignment)
+	}
+	#[inline]
+	fn set_spacing(&mut self, spacing: f32) {
+		self.layout_stats_mut().set_spacing(spacing);
+	}
+	#[inline]
+	fn set_padding(&mut self, padding: f32) {
+		self.layout_stats_mut().set_padding(padding);
+	}
+}
+
+pub trait VxBoxLayoutFunctionExt: VxBoxLayout {
+	#[inline]
+	fn add_widget<W: VxWidget>(&mut self, widget: W) {
+		self.stats_mut().add_child_widget(widget);
+	}
+	#[inline]
+	fn add_widgets(&mut self, widgets: impl IntoIterator<Item = Box<dyn VxWidget>>) {
+		for widget in widgets.into_iter() {
+			self.stats_mut().add_child_widget_box(widget);
+		}
+	}
+}
+
+impl<T: VxBoxLayout + ?Sized> VxBoxLayoutStatsWrapExt for T {}
+impl<T: VxBoxLayout + ?Sized> VxBoxLayoutFunctionExt for T {}
+
+
+pub struct VxBoxLayoutResolver {
+	computed_rects: AHashMap<VxWidgetId, VxRect>,
+}
+
+impl VxBoxLayoutResolver {
+	#[inline]
+	pub fn new() -> Self {
+		Self { computed_rects: AHashMap::new() }
+	}
+
+	pub fn resolve_container(
+		&mut self,
+		bounding_rect_creator: &mut VxBoundingRectCreator,
+		container_id: VxWidgetId,
+		container_rect: VxRect,
+		widgets: &mut VxGenVector<Box<dyn VxWidget>>,
+	) {
+		self.computed_rects.insert(container_id, container_rect);
+
+		let ((layout_fn, stats), children) = {
+			let Some(widget) = widgets.get(container_id) else { return; };
+			let Some(layout_widget) = widget.as_box_layout() else { return; };
+			(layout_widget.layout_fn(), widget.children().clone())
+		};
+
+		if children.is_empty() {
+			return;
+		}
+
+		let computed_children = layout_fn(
+			&stats,
+			bounding_rect_creator,
+			container_rect,
+			&children,
+			widgets
+		);
+
+		for (child_id, child_rect) in computed_children {
+			self.computed_rects.insert(child_id, child_rect);
+
+			let is_box_layout = widgets.get(child_id)
+				.and_then(|w| w.as_box_layout())
+				.is_some();
+
+			if is_box_layout {
+				self.resolve_container(
+					bounding_rect_creator,
+					child_id,
+					child_rect,
+					widgets
+				);
+			}
+		}
+	}
+
+	#[inline]
+	pub fn take_computed_rects(&mut self) -> AHashMap<VxWidgetId, VxRect> {
+		std::mem::take(&mut self.computed_rects)
+	}
+
+	#[inline]
+	pub fn clear_cache(&mut self) {
+		self.computed_rects.clear();
 	}
 }

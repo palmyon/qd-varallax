@@ -1,22 +1,32 @@
-//構造体
-//Generation Index
+use std::{hash::Hash, u64, usize};
+
 #[derive(Hash, Copy, Clone, PartialEq, Eq, Default, Debug)]
 pub struct VxGenIndex {
 	pub(crate) index: usize,
 	pub(crate) generation: u64,
 }
 
-pub trait VxGenIndexConvertToRawIndex {
+pub trait VxGenIndexWrapper: Clone + Copy + Hash + Eq {
+	fn new_invalid() -> Self;
+	fn is_valid(&self) -> bool;
+	fn as_gen_index(&self) -> VxGenIndex;
 	fn raw_index(&self) -> usize;
 	fn raw_index_u32(&self) -> u32;
 }
 
-pub trait VxGenIndexInvalid {
-	fn new_invalid() -> Self;
-	fn is_valid(&self) -> bool;
-}
-
-impl VxGenIndexConvertToRawIndex for VxGenIndex {
+impl VxGenIndexWrapper for VxGenIndex {
+	#[inline]
+	fn new_invalid() -> Self {
+		Self { index: usize::MAX, generation: u64::MAX, }
+	}
+	#[inline]
+	fn is_valid(&self) -> bool {
+		self.index == usize::MAX && self.generation == u64::MAX
+	}
+	#[inline]
+	fn as_gen_index(&self) -> VxGenIndex {
+		*self
+	}
 	#[inline]
 	fn raw_index(&self) -> usize {
 		self.index
@@ -24,17 +34,6 @@ impl VxGenIndexConvertToRawIndex for VxGenIndex {
 	#[inline]
 	fn raw_index_u32(&self) -> u32 {
 		self.index as u32
-	}
-}
-
-impl VxGenIndexInvalid for VxGenIndex {
-	#[inline]
-	fn new_invalid() -> Self {
-		Self { index: usize::MAX, generation: u64::MAX }
-	}
-	#[inline]
-	fn is_valid(&self) -> bool {
-		self.index == usize::MAX && self.generation == u64::MAX
 	}
 }
 
@@ -152,17 +151,17 @@ impl <'a, T> Iterator for VxGenIteratorWithIdMut<'a, T> {
 }
 
 //Generation Vector Index trait
-impl<T> std::ops::Index<VxGenIndex> for VxGenVector<T> {
+impl<I: VxGenIndexWrapper, T> std::ops::Index<I> for VxGenVector<T> {
 	type Output = T;
 
 	#[inline]
-	fn index(&self, index: VxGenIndex) -> &Self::Output {
+	fn index(&self, index: I) -> &Self::Output {
 		self.get(index).expect("VxGenVector> Critical: Invalid Generation Index")
 	}
 }
 
 //Generation Vector
-impl <T> VxGenVector<T> {
+impl<T> VxGenVector<T> {
 	#[inline]
 	pub const fn new() -> Self {
 		Self {
@@ -204,11 +203,12 @@ impl <T> VxGenVector<T> {
 		}
 	}
 
-	pub fn remove(&mut self, id: VxGenIndex) -> Option<T> {
-		let slot = self.slots.get_mut(id.index)?;
+	pub fn remove<I: VxGenIndexWrapper>(&mut self, id: I) -> Option<T> {
+		let gen_index = id.as_gen_index();
+		let slot = self.slots.get_mut(gen_index.index)?;
 
 		match slot {
-			VxGenSlot::Using { generation , .. } if *generation == id.generation => {
+			VxGenSlot::Using { generation , .. } if *generation == gen_index.generation => {
 				let old_gen= *generation;
 				let old_slot = std::mem::replace(
 					slot,
@@ -218,7 +218,7 @@ impl <T> VxGenVector<T> {
 					}
 				);
 				if let VxGenSlot::Using { data, .. } = old_slot {
-					self.free_head = Some(id.index);
+					self.free_head = Some(gen_index.index);
 					self.len -= 1;
 					return Some(data);
 				}
@@ -229,25 +229,29 @@ impl <T> VxGenVector<T> {
 	}
 
 	//getter
-	pub fn get(&self, id: VxGenIndex) -> Option<&T> {
-		match self.slots.get(id.index)? {
+	pub fn get<I: VxGenIndexWrapper>(&self, id: I) -> Option<&T> {
+		let gen_index = id.as_gen_index();
+		match self.slots.get(gen_index.index)? {
 			VxGenSlot::Using {
 				data,
 				generation
-			} if *generation == id.generation => Some(data),
+			} if *generation == gen_index.generation => Some(data),
 			_ => None,
 		}
 	}
-	pub fn get_mut(&mut self, id: VxGenIndex) -> Option<&mut T> {
-		match self.slots.get_mut(id.index)? {
+	pub fn get_mut<I: VxGenIndexWrapper>(&mut self, id: I) -> Option<&mut T> {
+		let gen_index = id.as_gen_index();
+		match self.slots.get_mut(gen_index.index)? {
 			VxGenSlot::Using {
 				data,
 				generation
-			} if *generation == id.generation => Some(data),
+			} if *generation == gen_index.generation => Some(data),
 			_ => None,
 		}
 	}
-	pub fn get_two_mut(&mut self, id1: VxGenIndex, id2: VxGenIndex) -> Option<(&mut T, &mut T)> {
+	pub fn get_two_mut<I: VxGenIndexWrapper>(&mut self, id1: I, id2: I) -> Option<(&mut T, &mut T)> {
+		let id1 = id1.as_gen_index();
+		let id2 = id2.as_gen_index();
 		if id1.index == id2.index { return None; }
 		
 		let (min_index, max_index, swapped) = if id1.index < id2.index {
@@ -314,10 +318,24 @@ impl <T> VxGenVector<T> {
 		self.len == 0
 	}
 
-	pub fn contains(&self, id: VxGenIndex) -> bool {
+	pub fn contains<I: VxGenIndexWrapper>(&self, id: I) -> bool {
+		let id = id.as_gen_index();
 		match self.slots.get(id.index) {
 			Some(VxGenSlot::Using { generation, .. }) => *generation == id.generation,
 			_ => false,
+		}
+	}
+
+	pub fn vacant_id(&self) -> VxGenIndex {
+		if let Some(index) = self.free_head {
+			match self.slots[index] {
+				VxGenSlot::Free { generation, .. } => {
+					VxGenIndex::new(index, generation)
+				}
+				_ => unreachable!("free_head pointed to a Using slot."),
+			}
+		} else {
+			VxGenIndex::new(self.slots.len(), 0)
 		}
 	}
 

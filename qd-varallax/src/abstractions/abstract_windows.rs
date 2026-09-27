@@ -9,19 +9,14 @@ use winit::{
 use crate::{
 	abstractions::{
 		abstract_widgets::{
-			VxWidget,
-			VxWidgetHandler
-		},
-		window_function::VxWindowFunctions
-	},
-	core::{
+			VxWidget, VxWidgetHandler, VxWidgetId
+		}, window_function::VxWindowFunctions
+	}, core::{
 		gpu_resource::VxGpuResource,
 		renderer::VxRenderer,
 		resource::VxAppResource,
 		scene::VxScene,
-	},
-	painter::painter::VxPainter,
-	types::{
+	}, painter::painter::VxPainter, types::{
 		event::{
 			VxEvent,
 			VxEventResult,
@@ -182,6 +177,7 @@ impl VxWindowStats {
 				VxMatrix4x4::orthographic(new_size),
 			);
 			self.window_size = new_size;
+			self.scene.resized_event(new_size);
 		}
 		self.is_dirty = true;
 		VxEventResult::Ignore
@@ -247,7 +243,7 @@ impl VxWindowStats {
 
 	#[inline]
 	pub fn finalize_init(&mut self) {
-		self.scene.refresh_spatial_index();
+		return;
 	}
 }
 
@@ -348,6 +344,15 @@ pub trait VxWindowExt: VxWindow {
 	fn add_widget<W: VxWidget>(&mut self, widget: W) -> Option<VxWidgetHandler<W>> {
 		self.stats_mut().as_mut()
 			.map(|stats| stats.scene.add_widget(widget))
+	}
+	#[inline]
+	fn add_widgets(&mut self, widgets: impl IntoIterator<Item = Box<dyn VxWidget>>) -> Option<Vec<VxWidgetId>> {
+		self.stats_mut().as_mut()
+			.and_then(|stats| {
+				Some(widgets.into_iter()
+					.map(|w| stats.scene.add_widget_box(w))
+					.collect::<Vec<_>>())
+			})
 	}
 	#[inline]
 	fn get_widget<W: VxWidget>(&self, handler: VxWidgetHandler<W>) -> Option<&W> {

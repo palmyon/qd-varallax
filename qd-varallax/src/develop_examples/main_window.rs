@@ -1,47 +1,21 @@
-use crate::{abstractions::{abstract_layouts::{VxLayout, VxSpatialLayoutAnchor, VxSpatialLayoutAxisRule}, abstract_widgets::*, abstract_windows::*}, core::glyph::VxFont, types::{color::VxColor, geometry::{VxRect, VxRectR}}, widgets::{button::{VxButtonStyle, VxButtonWidget}, immediate_area::VxImmediateAreaWidget, theme::VxThemeMode, vx_widgets::VxRectWidget}};
-use qd_varallax_macro::VxWindowDerive;
+use crate::{abstractions::{abstract_layouts::*, abstract_widgets::*, abstract_windows::*}, types::{color::VxColor, geometry::VxRect}, widgets::{immediate_area::VxImmediateAreaWidget, layout::{VxHBoxLayoutWidget, VxVBoxLayoutWidget}, vx_widgets::VxRectWidget}};
+use qd_varallax_macro::VxWindowImpl;
 
-#[derive(VxWindowDerive)]
+#[derive(VxWindowImpl)]
 pub struct DemoWindow {
-	#[vx(Stat)]
+	#[attr(stat)]
 	stat: Option<VxWindowStats>,
-	#[vx(WindowAttr)]
+	#[attr(w_attr)]
 	window_attr: VxWindowAttributes,
 }
 
 impl VxWindow for DemoWindow {
 	fn init_event(&mut self) {
-		for i in 0..1920 {
-			for j in 0..12 {
-				let mut rect = VxRectWidget::new(
-					VxRect::from_i32(0, 0, 1, 100),
-					VxColor::from_hsv(i as f32 / 1920.0, 1.0, 1.0),
-					None
-				);
-				rect.set_pos((i, j * 100).into());
-				rect.set_z_value(-5);
-				self.add_widget(rect);
-			}
+		let mut layout = VxVBoxLayoutWidget::new(None);
+		let mut layout2 = VxHBoxLayoutWidget::new(None);
+		for _ in 0..3 {
+			layout2.add_widget(VxRectWidget::new(VxRect::from_i32(0, 0, 10, 10), VxColor::from_hex(0x00D4FF), None));
 		}
-
-		let mut button = VxButtonWidget::new(
-			VxRectR::new(VxRect::from_i32(0, 0, 200, 50), 3.0),
-			"こんにちは",
-			VxButtonStyle::new(VxThemeMode::DarkMode, VxFont::from_family_str("kokumr", 30.0)),
-			None
-		);
-		button.set_layout(
-			VxLayout::new()
-				.with_anchor_x(VxSpatialLayoutAnchor::Window)
-				.with_anchor_y(VxSpatialLayoutAnchor::Window)
-				.with_rule_x(VxSpatialLayoutAxisRule::Fixed { offset: 0.0, size: 0.0 })
-				.with_rule_y(VxSpatialLayoutAxisRule::Fixed { offset: 0.0, size: 50.0 })
-		);
-		button.set_pos((200, 200).into());
-		button.signals.clicked.connect(|button, &pos| {
-			button.set_pos(pos);
-		});
-		self.add_widget(button);
 
 		let mut counter: f32 = 0.0;
 		let mut area = VxImmediateAreaWidget::new(
@@ -53,7 +27,10 @@ impl VxWindow for DemoWindow {
 			None
 		);
 		area.set_pos((150, 250).into());
-		self.add_widget(area);
+		layout2.add_widget(area);
+		layout.add_widget(layout2);
+		layout.add_widget(VxRectWidget::new(VxRect::from_i32(0, 0, 10, 10), VxColor::from_hex(0x00D4FF), None));
+		self.add_widget(layout);
 	}
 	#[inline]
 	fn has_immediate(&self) -> bool {

@@ -1,4 +1,3 @@
-
 use crate::types::geometry::VxSize;
 
 pub(crate) struct VxGpuTextureData {
@@ -101,11 +100,35 @@ pub(crate) struct VxGpuResource {
 impl VxGpuResource {
 	pub const TEXTURE_ARRAY_SIZE: u32 = 512;
 	pub(crate) async fn new() -> Self {
-		let instance = wgpu::Instance::default();
+		let allowed_backends = if cfg!(target_os = "windows") {
+			wgpu::Backends::DX12 | wgpu::Backends::VULKAN | wgpu::Backends::GL
+		} else if cfg!(target_os = "macos") {
+			wgpu::Backends::METAL
+		} else {
+			wgpu::Backends::VULKAN | wgpu::Backends::GL
+		};
+		let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+			backends: allowed_backends,
+			..Default::default()
+		});
 
-		let adapter = instance
-			.request_adapter(&wgpu::RequestAdapterOptions::default())
+		let adapters = instance.enumerate_adapters(allowed_backends);
+		let preferred_backends = match std::env::consts::OS {
+			"windows" => vec![wgpu::Backends::DX12, wgpu::Backends::VULKAN, wgpu::Backends::GL],
+			"macos" => vec![wgpu::Backends::METAL],
+			_ => vec![wgpu::Backends::VULKAN, wgpu::Backends::GL],
+		};
+
+		let adapter = adapters
 			.await
+			.into_iter()
+			.min_by_key(|adapter| {
+				let info = adapter.get_info();
+				preferred_backends
+					.iter()
+					.position(|&b| b == info.backend.into())
+					.unwrap_or(usize::MAX)
+			})
 			.unwrap();
 
 		let (device, queue) = adapter
@@ -195,6 +218,7 @@ impl VxGpuResource {
 		}
 	}
 
+	#[inline]
 	pub(crate) fn update_surface_config(&self, surface: &wgpu::Surface, config: &wgpu::SurfaceConfiguration) {
 		surface.configure(&self.device, config);
 	}

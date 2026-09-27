@@ -9,16 +9,16 @@ use parry2d::{
 };
 
 use crate::{
-	types::{gen_vector::VxGenIndexConvertToRawIndex, geometry::{VxRect, VxVec2}}, utils::VxUtilConverter
+	types::{gen_vector::VxGenIndexWrapper, geometry::{VxRect, VxVec2}}, utils::VxUtilConverter
 };
 
-pub struct VxSpatialIndex<T: VxGenIndexConvertToRawIndex + Clone + Copy> {
+pub struct VxSpatialIndex<T: VxGenIndexWrapper> {
 	tree: Bvh,
 	workspace: BvhWorkspace,
 	id_map: AHashMap<u32, T>,
 }
 
-impl<T: VxGenIndexConvertToRawIndex + Clone + Copy> VxSpatialIndex<T> {
+impl<T: VxGenIndexWrapper> VxSpatialIndex<T> {
 	#[inline]
 	pub fn new() -> Self {
 		Self {

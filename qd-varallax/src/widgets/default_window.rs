@@ -1,4 +1,4 @@
-use qd_varallax_macro::VxWindowDerive;
+use qd_varallax_macro::VxWindowImpl;
 
 use crate::abstractions::abstract_windows::{
 	VxWindow,
@@ -8,11 +8,11 @@ use crate::abstractions::abstract_windows::{
 	VxWindowBuilder,
 };
 
-#[derive(VxWindowDerive)]
+#[derive(VxWindowImpl)]
 pub struct VxDefaultWindow {
-	#[vx(Stat)]
+	#[attr(stat)]
 	stats: Option<VxWindowStats>,
-	#[vx(WindowAttr)]
+	#[attr(w_attr)]
 	attr: VxWindowAttributes,
 }
 

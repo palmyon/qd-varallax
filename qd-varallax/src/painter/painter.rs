@@ -49,7 +49,7 @@ impl VxPainter {
 		.expect("VxPainter> transform_stack: Not found last VxMatrix3x3. Check [VxWidget> paint] event.")
 	}
 
-	pub fn push_tranform(&mut self, transform: VxTransform) {
+	pub fn push_transform(&mut self, transform: VxTransform) {
 		let new_matrix = self.current_tranform() * VxMatrix3x3::from_transform(transform);
 		self.transform_stack.push(new_matrix);
 	}

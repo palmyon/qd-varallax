@@ -229,6 +229,30 @@ pub enum VxDirtyCheckResult {
 	OnlyImmediate,
 	All,
 }
+impl VxDirtyCheckResult {
+	#[inline]
+	pub fn rank(&self) -> u8 {
+		match *self {
+			Self::None => 0,
+			Self::OnlyImmediate => 1,
+			Self::All => 2
+		}
+	}
+	#[inline]
+	pub fn upgrade(&mut self) {
+		match self {
+			Self::OnlyImmediate => *self = Self::All,
+			Self::None => *self = Self::All,
+			_ => {}
+		}
+	}
+	#[inline]
+	pub fn merge(&mut self, other: Self) {
+		if self.rank() < other.rank() {
+			*self = other;
+		}
+	}
+}
 
 pub trait VxVertexRenderModuleTarget: bytemuck::Pod + bytemuck::Zeroable {
 	const MODULE_ID: VxRenderModuleId;

@@ -44,7 +44,7 @@ impl<'a> VxImmediateContext<'a> {
 			}
 		}
 
-		self.painter.push_tranform(VxTransform::new(
+		self.painter.push_transform(VxTransform::new(
 			(200, 150).into(), Default::default(), VxSize::from_i32(1, 1), 0.0.into(), Default::default())
 		);
 		self.painter.draw_sdf_rect(
