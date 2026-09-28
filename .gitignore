@@ -1,6 +1,7 @@
 /target
-/qd-varallax/target
+/qd-varallax-core/target
 /qd-varallax-macro/target
+/qd-varallax-widget/target
 /memo.md
 /.vscode
 /.VsCodeCounter

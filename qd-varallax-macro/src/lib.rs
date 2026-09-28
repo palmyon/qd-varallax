@@ -35,7 +35,7 @@ pub fn vx_window_impl(input: TokenStream) -> TokenStream {
 	let window_attr = attr_field.expect("VxWindowImpl> Need #[attr(w_attr)] on [VxWindowAttributes].");
 
 	let expanded = quote! {
-		impl VxWindowInternal for #name {
+		impl VxWindowAccessor for #name {
 			#[inline]
 			fn stats(&self) -> &Option<VxWindowStats> {
 				&self.#stat
@@ -108,6 +108,8 @@ pub fn vx_widget_impl(input: TokenStream) -> TokenStream {
 			fn as_any(&self) -> &dyn ::std::any::Any { self }
 			#[inline]
 			fn as_any_mut(&mut self) -> &mut dyn ::std::any::Any { self }
+			#[inline]
+			fn into_any(self: Box<Self>) -> Box<dyn ::std::any::Any> { self }
 		}
 	};
 	TokenStream::from(expanded)

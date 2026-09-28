@@ -1,7 +1,8 @@
 [workspace]
 members = [
-	"qd-varallax",
+	"qd-varallax-core",
 	"qd-varallax-macro",
+	"qd-varallax-widgets",
 ]
 resolver = "2"
 
