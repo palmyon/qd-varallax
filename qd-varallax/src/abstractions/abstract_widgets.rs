@@ -174,7 +174,7 @@ impl VxWidgetStats {
 		self.spatial_hierarchy_parent
 	}
 	#[inline]
-	pub(crate) fn children_widgets_take(&mut self) -> Vec<Box<dyn VxWidget>> {
+	pub(crate) fn take_children_widgets(&mut self) -> Vec<Box<dyn VxWidget>> {
 		std::mem::take(&mut self.children_widgets)
 	}
 

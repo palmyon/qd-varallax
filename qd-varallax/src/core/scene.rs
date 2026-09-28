@@ -103,17 +103,17 @@ impl<'a> VxDirtyProcessContext<'a> {
 	}
 
 	fn process_update_spatial_index(&mut self, id: VxWidgetId, rect: VxRect) {
-		let Some(spatial_flag) = self.widgets.get(id)
-			.map(|w| w.spatial_hierarchy_flag()) else { return; };
+		let Some((spatial_flag, spatial_parent_id)) = self.widgets.get(id)
+			.map(|w| (w.spatial_hierarchy_flag(), w.stats().spatial_hierarchy_parent())) else { return; };
 
 		let global_pos = Self::calc_global_pos(self.widgets, id);
 		let global_rect = rect.with_pos(global_pos);
 
 		match spatial_flag {
 			VxSpatialHierarchyFlag::HierarchyChild => {
-				if let Some(index) = self.hbvh.hierarchical.get_mut(&id) {
+				if let Some(index) = self.hbvh.hierarchical.get_mut(&spatial_parent_id) {
 					index.update_at(id, rect);
-					self.hbvh.need_update_index.insert(VxSpatialUpdateFlag::Hierarchical(id));
+					self.hbvh.need_update_index.insert(VxSpatialUpdateFlag::Hierarchical(spatial_parent_id));
 				}
 			}
 			_ => {
@@ -283,12 +283,23 @@ impl VxScene {
 		result
 	}
 
+	pub fn get_widget<W: VxWidget>(&self, handler: VxWidgetHandler<W>) -> Option<&W> {
+		self.widgets.get(handler.id())?
+			.as_any()
+			.downcast_ref::<W>()
+	}
+	pub fn get_widget_mut<W: VxWidget>(&mut self, handler: VxWidgetHandler<W>) -> Option<&mut W> {
+		self.widgets.get_mut(handler.id())?
+			.as_any_mut()
+			.downcast_mut::<W>()
+	}
+
 	pub fn add_widget<W: VxWidget>(&mut self, widget: W) -> VxWidgetHandler<W> {
 		VxWidgetHandler::<W>::new(self.add_widget_box(widget.into_box()))
 	}
 
 	pub fn add_widget_box(&mut self, mut widget: Box<dyn VxWidget>) -> VxWidgetId {
-		let children = widget.stats_mut().children_widgets_take();
+		let children = widget.stats_mut().take_children_widgets();
 		let id = VxWidgetId::new(self.widgets.vacant_id());
 
 		Self::register_widget(
@@ -300,19 +311,22 @@ impl VxScene {
 			&mut self.hbvh,
 		);
 
-		let flag = widget.spatial_hierarchy_flag();
+		let parent_hierarchy_flag = widget.spatial_hierarchy_flag();
 		self.widgets.insert(widget);
-
-		let parent_spatial_index = match flag {
-			VxSpatialHierarchyFlag::HierarchyChild => Self::find_spatial_index(&self.widgets, id),
-			_ => VxWidgetId::new_invalid(),
-		};
-		if let Some(widget) = self.widgets.get_mut(id) {
-			widget.stats_mut().set_spatial_hierarchy_parent(parent_spatial_index);
-		}
 		
 		for mut child in children {
 			child.set_parent(id);
+			match parent_hierarchy_flag {
+				VxSpatialHierarchyFlag::HierarchyParent => {
+					child.set_spatial_hierarchy_flag(VxSpatialHierarchyFlag::HierarchyChild);
+					child.stats_mut().set_spatial_hierarchy_parent(id);
+				}
+				VxSpatialHierarchyFlag::HierarchyChild => {
+					child.set_spatial_hierarchy_flag(VxSpatialHierarchyFlag::HierarchyChild);
+					child.stats_mut().set_spatial_hierarchy_parent(Self::find_spatial_index(&self.widgets, id));
+				}
+				_ => {}
+			}
 			let child_id = self.add_widget_box(child);
 			if let Some(parent) = self.widgets.get_mut(id) {
 				parent.stats_mut().add_child(child_id);
@@ -320,17 +334,6 @@ impl VxScene {
 		}
 		self.dirty_command_sender.mark_dirty(id, VxDirtyFlag::REBUILD_ALL);
 		id
-	}
-
-	pub fn get_widget<W: VxWidget>(&self, handler: VxWidgetHandler<W>) -> Option<&W> {
-		self.widgets.get(handler.id())?
-			.as_any()
-			.downcast_ref::<W>()
-	}
-	pub fn get_widget_mut<W: VxWidget>(&mut self, handler: VxWidgetHandler<W>) -> Option<&mut W> {
-		self.widgets.get_mut(handler.id())?
-			.as_any_mut()
-			.downcast_mut::<W>()
 	}
 
 	fn register_widget<W: VxWidget + ?Sized>(
@@ -362,11 +365,12 @@ impl VxScene {
 
 	fn find_spatial_index(widgets: &VxGenVector<Box<dyn VxWidget>>, mut current_id: VxWidgetId) -> VxWidgetId {
 		while let Some(parent_id) = widgets.get(current_id).and_then(|w| w.parent()) {
-			let Some(parent) = widgets.get(parent_id) else { break; };
-			if parent.spatial_hierarchy_flag() == VxSpatialHierarchyFlag::HierarchyParent {
-				return parent_id;
+			if let Some(parent) = widgets.get(parent_id) {
+				if parent.spatial_hierarchy_flag() == VxSpatialHierarchyFlag::HierarchyParent {
+					return parent_id;
+				}
+				current_id = parent_id;
 			}
-			current_id = parent_id;
 		}
 		current_id
 	}
@@ -387,7 +391,7 @@ impl VxScene {
 				let global_rect = widget.bounding_rect().with_pos(global_pos);
 				if widget.is_visible() && global_rect.contains(pos) {
 					let result = VxSpatialTraverseResult::new(
-						id, widget.spatial_hierarchy_flag(), widget.stats().spatial_hierarchy_parent()
+						id, widget.spatial_hierarchy_flag()
 					);
 					Some((widget.z_value(), result))
 				} else {
@@ -397,13 +401,12 @@ impl VxScene {
 			.max_by_key(|(z, _)| *z)
 			.map(|(_, result)| result)?;
 
-		let (res_id, flag, parent) = traverse_result.decompose();
+		let (res_id, flag) = traverse_result.decompose();
 
 		match flag {
-			VxSpatialHierarchyFlag::HierarchyChild => {
-				let target_index = self.hbvh.hierarchical.get(&parent)?;
-				let parent_global_pos = VxDirtyProcessContext::calc_global_pos(&self.widgets, parent);
-				return self.traverse_widget_at(target_index, parent_global_pos);
+			VxSpatialHierarchyFlag::HierarchyParent => {
+				let target_index = self.hbvh.hierarchical.get(&res_id)?;
+				return self.traverse_widget_at(target_index, pos);
 			}
 			_ => {}
 		}
@@ -509,19 +512,19 @@ impl VxScene {
 	}
 }
 
+#[derive(Clone, Copy, Debug)]
 struct VxSpatialTraverseResult {
 	id: VxWidgetId,
 	flag: VxSpatialHierarchyFlag,
-	parent: VxWidgetId,
 }
 
 impl VxSpatialTraverseResult {
 	#[inline]
-	pub fn new(id: VxWidgetId, flag: VxSpatialHierarchyFlag, parent: VxWidgetId) -> Self {
-		Self { id, flag, parent }
+	pub fn new(id: VxWidgetId, flag: VxSpatialHierarchyFlag) -> Self {
+		Self { id, flag }
 	}
 	#[inline]
-	pub fn decompose(self) -> (VxWidgetId, VxSpatialHierarchyFlag, VxWidgetId) {
-		(self.id, self.flag, self.parent)
+	pub fn decompose(self) -> (VxWidgetId, VxSpatialHierarchyFlag) {
+		(self.id, self.flag)
 	}
 }
