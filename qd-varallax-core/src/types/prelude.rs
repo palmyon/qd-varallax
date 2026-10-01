@@ -32,7 +32,11 @@ pub use crate::types::{
 		VxMouseButtonState,
 		VxMouseState,
 	},
-	style::VxSdfStyle,
+	style::{
+		VxColorPalette,
+		VxSdfStyle,
+		VxThemeMode,
+	},
 	texture::{
 		VxImage,
 		VxTexColorChannelMap,

@@ -52,6 +52,7 @@ pub struct VxColorPalette {
 
 	widget_primary: VxColor,
 	widget_secondary: VxColor,
+	widget_disabled: VxColor,
 
 	outline: VxColor,
 	accent: VxColor,
@@ -62,7 +63,7 @@ impl VxColorPalette {
 		theme: VxThemeMode,
 		background_primary: VxColor, background_secondary: VxColor,
 		text_primary: VxColor, text_secondary: VxColor, text_disabled: VxColor,
-		widget_primary: VxColor, widget_secondary: VxColor,
+		widget_primary: VxColor, widget_secondary: VxColor, widget_disabled: VxColor,
 		outline: VxColor, accent: VxColor
 	) -> Self {
 		Self {
@@ -74,6 +75,7 @@ impl VxColorPalette {
 			text_disabled,
 			widget_primary,
 			widget_secondary,
+			widget_disabled,
 			outline,
 			accent
 		}
@@ -92,12 +94,13 @@ impl VxColorPalette {
 		Self {
 			theme: VxThemeMode::Light,
 			background_primary: VxColor::from_hex(0xF3F3F3),
-			background_secondary: VxColor::from_name(VxColorName::White),
+			background_secondary: VxColor::from_hex(0xF0F0F0),
 			text_primary: VxColor::from_name(VxColorName::Black),
 			text_secondary: VxColor::from_hex(0x333333),
 			text_disabled: VxColor::from_hex(0x666666),
-			widget_primary: VxColor::from_hex(0x0067C0),
-			widget_secondary: VxColor::from_hex(0x0077DF),
+			widget_primary: VxColor::from_name(VxColorName::White),
+			widget_secondary: VxColor::from_hex(0x555555),
+			widget_disabled: VxColor::from_hex(0x444444),
 			outline: VxColor::from_hex(0x000000),
 			accent: VxColor::from_hex(0x00D4FF),
 		}
@@ -113,6 +116,7 @@ impl VxColorPalette {
 			text_disabled: VxColor::from_hex(0x666666),
 			widget_primary: VxColor::from_hex(0x2B2B2B),
 			widget_secondary: VxColor::from_hex(0x2E2E2E),
+			widget_disabled: VxColor::from_hex(0x101010),
 			outline: VxColor::from_hex(0x3C3C3C),
 			accent: VxColor::from_hex(0x00D4FF),
 		}
@@ -131,6 +135,7 @@ impl VxColorPalette {
 							.with_darken(0.2),
 			widget_primary: std_color.with_darken(0.25),
 			widget_secondary: std_color.with_darken(0.15),
+			widget_disabled: std_color.with_darken(0.40),
 			outline: std_color,
 			accent: std_color.with_color_channel(VxColorChannel::BGRA)
 		}
@@ -146,6 +151,7 @@ impl VxColorPalette {
 		self.text_disabled = palette.text_disabled();
 		self.widget_primary = palette.widget_primary();
 		self.widget_secondary = palette.widget_secondary();
+		self.widget_disabled = palette.widget_disabled();
 		self.outline = palette.outline();
 		self.accent = palette.accent();
 	}
@@ -174,6 +180,8 @@ impl VxColorPalette {
 	pub const fn widget_primary(&self) -> VxColor { self.widget_primary }
 	#[inline]
 	pub const fn widget_secondary(&self) -> VxColor { self.widget_secondary }
+	#[inline]
+	pub const fn widget_disabled(&self) -> VxColor { self.widget_disabled }
 	#[inline]
 	pub const fn outline(&self) -> VxColor { self.outline }
 	#[inline]

@@ -11,7 +11,7 @@ use crate::{
 			VxGlyphInfo,
 			VxVerticalMetrics
 		},
-		gpu_resource::{
+		gpu::{
 			VxBindlessTextureModule,
 			VxGpuResource,
 			VxGpuTextureData

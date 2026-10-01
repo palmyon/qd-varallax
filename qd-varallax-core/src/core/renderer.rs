@@ -3,7 +3,7 @@ use itertools::Itertools;
 
 use crate::{
 	core::{
-		gpu_resource::VxGpuResource,
+		gpu::VxGpuResource,
 		resource::VxAppResource
 	}, types::{
 		render_commands::{

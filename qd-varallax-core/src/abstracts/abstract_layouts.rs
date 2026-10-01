@@ -2,7 +2,7 @@ use ahash::{AHashMap, AHashSet};
 
 use crate::{
 	abstracts::abstract_widgets::{
-		VxWidget, VxWidgetId, VxWidgetLayoutExt, VxWidgetStatsWrapExt
+		VxDirtyFlag, VxWidget, VxWidgetContextWrapExt, VxWidgetId, VxWidgetLayoutExt
 	}, core::{
 		glyph::VxFont,
 		resource::VxAppResource
@@ -24,6 +24,7 @@ impl<'a> VxBoundingRectCreator<'a> {
 	pub(crate) fn new(res: &'a mut VxAppResource) -> Self {
 		Self { res }
 	}
+	#[inline]
 	pub fn create_text_bounding_rect(&mut self, text: &str, font: VxFont) -> VxRect {
 		self.res.fonts.create_text_bounding_rect(&self.res.gpu, font, text)
 	}
@@ -418,7 +419,7 @@ pub enum VxAlignment {
 }
 
 #[derive(Default, Clone, Copy)]
-pub struct VxBoxLayoutStats {
+pub struct VxBoxLayoutContext {
 	orientation: VxOrientation,
 	main_alignment: VxAlignment,
 	cross_alignment: VxAlignment,
@@ -426,7 +427,7 @@ pub struct VxBoxLayoutStats {
 	padding: f32,
 }
 
-impl VxBoxLayoutStats {
+impl VxBoxLayoutContext {
 	#[inline]
 	pub fn new() -> Self {
 		Self {
@@ -440,7 +441,7 @@ impl VxBoxLayoutStats {
 }
 
 // getter and setter
-impl VxBoxLayoutStats {
+impl VxBoxLayoutContext {
 	#[inline]
 	pub const fn orientation(&self) -> VxOrientation { self.orientation }
 	#[inline]
@@ -475,8 +476,8 @@ impl VxBoxLayoutStats {
 }
 
 pub trait VxBoxLayoutAccessor: std::any::Any {
-	fn layout_stats(&self) -> &VxBoxLayoutStats;
-	fn layout_stats_mut(&mut self) -> &mut VxBoxLayoutStats;
+	fn layout_context(&self) -> &VxBoxLayoutContext;
+	fn layout_context_mut(&mut self) -> &mut VxBoxLayoutContext;
 	fn as_any_layout(&self) -> &dyn std::any::Any;
 	fn as_any_layout_mut(&mut self) -> &mut dyn std::any::Any;
 }
@@ -484,63 +485,68 @@ pub trait VxBoxLayoutAccessor: std::any::Any {
 pub trait VxBoxLayout: VxWidget + VxBoxLayoutAccessor {
 	fn layout_fn(&self) -> (
 		fn(
-			&VxBoxLayoutStats,
+			&VxBoxLayoutContext,
 			&mut VxBoundingRectCreator<'_>,
 			VxRect,&[VxWidgetId],
 			&mut VxGenVector<Box<dyn VxWidget>>,
 		) -> Vec<(VxWidgetId, VxRect)>,
-		VxBoxLayoutStats
+		VxBoxLayoutContext
 	);
 }
 
-pub trait VxBoxLayoutStatsWrapExt: VxBoxLayout {
+pub trait VxBoxLayoutContextWrapExt: VxBoxLayout {
 	#[inline]
-	fn orientation(&self) -> VxOrientation { self.layout_stats().orientation() }
+	fn orientation(&self) -> VxOrientation { self.layout_context().orientation() }
 	#[inline]
-	fn main_alignment(&self) -> VxAlignment { self.layout_stats().main_alignment() }
+	fn main_alignment(&self) -> VxAlignment { self.layout_context().main_alignment() }
 	#[inline]
-	fn cross_alignment(&self) -> VxAlignment { self.layout_stats().cross_alignment() }
+	fn cross_alignment(&self) -> VxAlignment { self.layout_context().cross_alignment() }
 	#[inline]
-	fn spacing(&self) -> f32 { self.layout_stats().spacing() }
+	fn spacing(&self) -> f32 { self.layout_context().spacing() }
 	#[inline]
-	fn padding(&self) -> f32 { self.layout_stats().padding() }
+	fn padding(&self) -> f32 { self.layout_context().padding() }
 
 	#[inline]
 	fn set_orientation(&mut self, orientation: VxOrientation) {
-		self.layout_stats_mut().set_orientation(orientation);
+		self.layout_context_mut().set_orientation(orientation);
+		self.set_dirty_flag(VxDirtyFlag::LAYOUT);
 	}
 	#[inline]
 	fn set_main_alignment(&mut self, main_alignment: VxAlignment) {
-		self.layout_stats_mut().set_main_alignment(main_alignment)
+		self.layout_context_mut().set_main_alignment(main_alignment);
+		self.set_dirty_flag(VxDirtyFlag::LAYOUT);
 	}
 	#[inline]
 	fn set_cross_alignment(&mut self, cross_alignment: VxAlignment) {
-		self.layout_stats_mut().set_cross_alignment(cross_alignment)
+		self.layout_context_mut().set_cross_alignment(cross_alignment);
+		self.set_dirty_flag(VxDirtyFlag::LAYOUT);
 	}
 	#[inline]
 	fn set_spacing(&mut self, spacing: f32) {
-		self.layout_stats_mut().set_spacing(spacing);
+		self.layout_context_mut().set_spacing(spacing);
+		self.set_dirty_flag(VxDirtyFlag::LAYOUT);
 	}
 	#[inline]
 	fn set_padding(&mut self, padding: f32) {
-		self.layout_stats_mut().set_padding(padding);
+		self.layout_context_mut().set_padding(padding);
+		self.set_dirty_flag(VxDirtyFlag::LAYOUT);
 	}
 }
 
 pub trait VxBoxLayoutFunctionExt: VxBoxLayout {
 	#[inline]
 	fn add_widget<W: VxWidget>(&mut self, widget: W) {
-		self.stats_mut().add_child_widget(widget);
+		self.context_mut().add_child_widget(widget);
 	}
 	#[inline]
 	fn add_widgets(&mut self, widgets: impl IntoIterator<Item = Box<dyn VxWidget>>) {
 		for widget in widgets.into_iter() {
-			self.stats_mut().add_child_widget_box(widget);
+			self.context_mut().add_child_widget_box(widget);
 		}
 	}
 }
 
-impl<T: VxBoxLayout + ?Sized> VxBoxLayoutStatsWrapExt for T {}
+impl<T: VxBoxLayout + ?Sized> VxBoxLayoutContextWrapExt for T {}
 impl<T: VxBoxLayout + ?Sized> VxBoxLayoutFunctionExt for T {}
 
 

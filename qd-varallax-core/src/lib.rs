@@ -6,5 +6,4 @@ pub mod core;
 pub mod types;
 pub mod utils;
 pub mod painter;
-mod widgets;
 mod develop_examples;

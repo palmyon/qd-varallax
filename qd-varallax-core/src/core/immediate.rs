@@ -11,7 +11,7 @@ pub struct VxImmediateContext<'a> {
 }
 
 impl<'a> VxImmediateContext<'a> {
-	pub(crate) fn new(
+	pub fn new(
 		input: &'a VxInputState,
 		painter: &'a mut VxPainter,
 		available_size: VxSize,

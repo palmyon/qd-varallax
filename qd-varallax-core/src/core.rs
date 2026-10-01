@@ -2,7 +2,7 @@ pub mod application;
 pub mod spatial_index;
 pub mod glyph;
 pub mod mtsdf;
-pub mod gpu_resource;
+pub mod gpu;
 pub mod renderer;
 pub mod resource;
 pub mod scene;

@@ -7,18 +7,18 @@ use qd_varallax_core::{
 
 #[derive(VxWidgetImpl, VxBoxLayoutImpl)]
 pub struct VxVBoxLayoutWidget {
-	#[attr(stat)]
-	stats: VxWidgetStats,
-	#[attr_layout(stat)]
-	layout_stats: VxBoxLayoutStats,
+	#[attr(context)]
+	context: VxWidgetContext,
+	#[attr_layout(context)]
+	layout_context: VxBoxLayoutContext,
 }
 
 impl VxWidget for VxVBoxLayoutWidget {
 	fn size_hint(&mut self, _: &mut VxBoundingRectCreator) -> VxSizeHint {
-		VxSizeHint::ChildrenSize { padding: 5.0 }
+		VxSizeHint::ChildrenSize { padding: 0.0 }
 	}
 	fn paint(&mut self, painter: &mut VxPainter, palette: &qd_varallax_core::types::style::VxColorPalette) {
-		let _ = painter;
+		painter.draw_rect(self.bounding_rect().with_pos(self.pos()), VxColor::from_hex_with_alpha(0xFF000022));
 		let _ = palette;
 	}
 	#[inline]
@@ -35,32 +35,32 @@ impl VxBoxLayout for VxVBoxLayoutWidget {
 	#[inline]
 	fn layout_fn(&self) -> (
 			fn(
-				&VxBoxLayoutStats,
+				&VxBoxLayoutContext,
 				&mut VxBoundingRectCreator<'_>,
 				VxRect,&[VxWidgetId],
 				&mut VxGenVector<Box<dyn VxWidget>>,
 			) -> Vec<(VxWidgetId, VxRect)>,
-			VxBoxLayoutStats
+			VxBoxLayoutContext
 		)
 	{
-		(Self::calc_vbox_layout, self.layout_stats)
+		(Self::calc_vbox_layout, self.layout_context)
 	}
 }
 
 impl VxVBoxLayoutWidget {
 	pub fn new(parent: Option<VxWidgetId>) -> Self {
-		let mut layout_stats = VxBoxLayoutStats::new();
-		layout_stats.set_orientation(VxOrientation::Vertical);
-		let mut stats = VxWidgetStats::new(parent);
-		stats.set_z_value(-5);
+		let mut layout_context = VxBoxLayoutContext::new();
+		layout_context.set_orientation(VxOrientation::Vertical);
+		let mut context = VxWidgetContext::new(parent);
+		context.set_z_value(-5);
 		Self {
-			stats,
-			layout_stats,
+			context,
+			layout_context,
 		}
 	}
 
 	fn calc_vbox_layout(
-		stats: &VxBoxLayoutStats,
+		stats: &VxBoxLayoutContext,
 		creator: &mut VxBoundingRectCreator,
 		container_rect: VxRect,
 		children: &[VxWidgetId],
@@ -126,18 +126,18 @@ impl VxVBoxLayoutWidget {
 
 #[derive(VxWidgetImpl, VxBoxLayoutImpl)]
 pub struct VxHBoxLayoutWidget {
-	#[attr(stat)]
-	stats: VxWidgetStats,
-	#[attr_layout(stat)]
-	layout_stats: VxBoxLayoutStats,
+	#[attr(context)]
+	context: VxWidgetContext,
+	#[attr_layout(context)]
+	layout_context: VxBoxLayoutContext,
 }
 
 impl VxWidget for VxHBoxLayoutWidget {
 	fn size_hint(&mut self, _: &mut VxBoundingRectCreator) -> VxSizeHint {
-		VxSizeHint::ChildrenSize { padding: 5.0 }
+		VxSizeHint::ChildrenSize { padding: 0.0 }
 	}
 	fn paint(&mut self, painter: &mut VxPainter, palette: &qd_varallax_core::types::style::VxColorPalette) {
-		let _ = painter;
+		painter.draw_rect(self.bounding_rect().with_pos(self.pos()), VxColor::from_hex_with_alpha(0xFF000022));
 		let _ = palette;
 	}
 	fn as_box_layout(&self) -> Option<&dyn VxBoxLayout> {
@@ -151,32 +151,32 @@ impl VxWidget for VxHBoxLayoutWidget {
 impl VxBoxLayout for VxHBoxLayoutWidget {
 	fn layout_fn(&self) -> (
 			fn(
-				&VxBoxLayoutStats,
+				&VxBoxLayoutContext,
 				&mut VxBoundingRectCreator<'_>,
 				VxRect,&[VxWidgetId],
 				&mut VxGenVector<Box<dyn VxWidget>>,
 			) -> Vec<(VxWidgetId, VxRect)>,
-			VxBoxLayoutStats
+			VxBoxLayoutContext
 		)
 	{
-		(Self::calc_hbox_layout, self.layout_stats)
+		(Self::calc_hbox_layout, self.layout_context)
 	}
 }
 
 impl VxHBoxLayoutWidget {
 	#[inline]
 	pub fn new(parent: Option<VxWidgetId>) -> Self {
-		let mut layout_stats = VxBoxLayoutStats::new();
-		layout_stats.set_orientation(VxOrientation::Horizontal);
-		let mut stats = VxWidgetStats::new(parent);
-		stats.set_z_value(-5);
+		let mut layout_context = VxBoxLayoutContext::new();
+		layout_context.set_orientation(VxOrientation::Horizontal);
+		let mut context = VxWidgetContext::new(parent);
+		context.set_z_value(-5);
 		Self {
-			stats,
-			layout_stats,
+			context,
+			layout_context,
 		}
 	}
 	fn calc_hbox_layout(
-		stats: &VxBoxLayoutStats,
+		stats: &VxBoxLayoutContext,
 		creator: &mut VxBoundingRectCreator,
 		container_rect: VxRect,
 		children: &[VxWidgetId],
@@ -234,7 +234,7 @@ impl VxHBoxLayoutWidget {
 			results.push((child_id, VxRect::new(current_x, child_y, child_w, child_h)));
 			current_x += child_w + spacing;
 		}
-
+		
 		results
 	}
 }

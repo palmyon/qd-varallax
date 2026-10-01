@@ -84,8 +84,6 @@ impl VxBindlessTextureModule {
 	}
 }
 
-
-
 pub struct VxGpuResource {
 	pub(crate) instance: wgpu::Instance,
 	pub(crate) adapter: wgpu::Adapter,
@@ -99,18 +97,22 @@ pub struct VxGpuResource {
 
 impl VxGpuResource {
 	pub const TEXTURE_ARRAY_SIZE: u32 = 512;
-	pub(crate) async fn new() -> Self {
-		let allowed_backends = if cfg!(target_os = "windows") {
+	pub(crate) fn allow_wgpu_backends() -> wgpu::Backends {
+		if cfg!(target_os = "windows") {
 			wgpu::Backends::DX12 | wgpu::Backends::VULKAN | wgpu::Backends::GL
 		} else if cfg!(target_os = "macos") {
 			wgpu::Backends::METAL
 		} else {
 			wgpu::Backends::VULKAN | wgpu::Backends::GL
-		};
-		let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
-			backends: allowed_backends,
-			..Default::default()
-		});
+		}
+	}
+
+	pub(crate) async fn new(backends: Option<VxGpuBackend>) -> Self {
+		let allowed_backends = backends
+			.map(|b| b.as_wgpu_backends())
+			.unwrap_or_else(|| Self::allow_wgpu_backends());
+
+		let instance = Self::create_instance(allowed_backends);
 
 		let adapters = instance.enumerate_adapters(allowed_backends);
 		let preferred_backends = match std::env::consts::OS {
@@ -218,8 +220,45 @@ impl VxGpuResource {
 		}
 	}
 
+	fn create_instance(backends: wgpu::Backends) -> wgpu::Instance {
+		wgpu::Instance::new(&wgpu::InstanceDescriptor {
+			backends,
+			..Default::default()
+		})
+	}
+
 	#[inline]
 	pub(crate) fn update_surface_config(&self, surface: &wgpu::Surface, config: &wgpu::SurfaceConfiguration) {
 		surface.configure(&self.device, config);
+	}
+}
+
+bitflags::bitflags! {
+	#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+	pub struct VxGpuBackend: u8 {
+		const DX12    = 1;
+		const VULKAN  = 1 << 1;
+		const METAL   = 1 << 2;
+		const GL      = 1 << 3;
+		const WEB_GPU = 1 << 4;
+	}
+}
+
+impl VxGpuBackend {
+	pub fn as_wgpu_backends(&self) -> wgpu::Backends {
+		let mut backends = wgpu::Backends::NOOP;
+		self.iter()
+			.for_each(|backend| {
+				match backend {
+					Self::DX12 => backends = backends | wgpu::Backends::DX12,
+					Self::VULKAN => backends = backends | wgpu::Backends::VULKAN,
+					Self::METAL => backends = backends | wgpu::Backends::METAL,
+					Self::GL => backends = backends | wgpu::Backends::GL,
+					Self::WEB_GPU => backends = backends | wgpu::Backends::BROWSER_WEBGPU,
+					_ => {}
+				}
+		});
+		backends.remove(wgpu::Backends::NOOP);
+		backends
 	}
 }

@@ -5,7 +5,8 @@ use winit::{
 	application::ApplicationHandler,
 	event::{
 		MouseScrollDelta,
-		WindowEvent
+		WindowEvent,
+		Ime
 	},
 	event_loop::{
 		EventLoop,
@@ -23,8 +24,8 @@ use winit::{
 
 use crate::{
 	abstracts::abstract_window::{
-		VxWindow, VxWindowStats
-	}, core::resource::VxAppResource, types::{
+		VxWindow, VxWindowContext
+	}, core::{gpu::VxGpuBackend, resource::VxAppResource}, types::{
 		event::{
 			VxEvent,
 			VxKeyEvent,
@@ -47,6 +48,8 @@ struct VxAppHandler {
 	last_mouse_pos: VxVec2,
 	wheel_pixel_amount: f32,
 	proxy: EventLoopProxy<VxEvent>,
+
+	backends: Option<VxGpuBackend>,
 }
 
 impl ApplicationHandler<VxEvent> for VxAppHandler {
@@ -60,12 +63,12 @@ impl ApplicationHandler<VxEvent> for VxAppHandler {
 			self.windows.insert(id, (Arc::new(winit_window), w));
 		}
 
-		let res = self.resources.get_or_insert_with(|| VxAppResource::new());
+		let res = self.resources.get_or_insert_with(|| VxAppResource::new(self.backends));
 
 		for (winit_window, window) in self.windows.values_mut() {
-			if window.stats().is_none() {
-				let stats = VxWindowStats::new(&res.gpu, winit_window.clone(), self.proxy.clone());
-				window.set_stats(stats);
+			if window.context().is_none() {
+				let stats = VxWindowContext::new(&res.gpu, winit_window.clone(), self.proxy.clone());
+				window.set_context(stats);
 				window.init_event();
 			}
 		}
@@ -117,7 +120,7 @@ impl ApplicationHandler<VxEvent> for VxAppHandler {
 
 			WindowEvent::CursorMoved { position, .. } => {
 				let pos = VxVec2::new(position.x as f32, position.y as f32);
-				if let Some(stat) = window.stats() {
+				if let Some(stat) = window.context() {
 					let factor = stat.scale_factor();
 					self.last_mouse_pos = pos / factor;
 				}
@@ -180,6 +183,15 @@ impl ApplicationHandler<VxEvent> for VxAppHandler {
 				};
 				window.theme_changed_event(new_theme);
 			}
+
+			WindowEvent::Ime(ime) => {
+				match ime {
+					Ime::Preedit(text, cursor) => {
+						println!("{}, {:?}", text, cursor.unwrap_or_else(|| (usize::MAX, usize::MAX)));
+					}
+					_ => {}
+				}
+			}
 			_ => {},
 		}
 	}
@@ -202,7 +214,7 @@ impl ApplicationHandler<VxEvent> for VxAppHandler {
 				let Some((winit_window, mut w)) = Self::create_window(event_loop, window) else { return; };
 				let id = winit_window.id();
 				let arc_window = Arc::new(winit_window);
-				w.set_stats(VxWindowStats::new(&res.gpu, arc_window.clone(), self.proxy.clone()));
+				w.set_context(VxWindowContext::new(&res.gpu, arc_window.clone(), self.proxy.clone()));
 				w.init_event();
 				self.windows.insert(id, (arc_window, w));
 			}
@@ -215,7 +227,7 @@ impl ApplicationHandler<VxEvent> for VxAppHandler {
 		if elapsed >= self.target_frame_duration {
 			for (_, window) in self.windows.values_mut() {
 				let has_immediate = window.has_immediate();
-				if let (Some(res), Some(stats)) = (&mut self.resources, window.stats_mut()) {
+				if let (Some(res), Some(stats)) = (&mut self.resources, window.context_mut()) {
 					if has_immediate {
 						if !stats.check_dirty(res) {
 							stats.window.request_redraw();
@@ -269,7 +281,8 @@ impl VxApplication {
 				target_frame_duration: Duration::from_secs_f64(1.0 / 60.0),
 				last_mouse_pos: VxVec2::default(),
 				wheel_pixel_amount: 15.0,
-				proxy
+				proxy,
+				backends: None,
 			}
 		}
 	}
@@ -281,6 +294,11 @@ impl VxApplication {
 	#[inline]
 	pub fn with_target_frame_duration_ms(mut self, target_frame_rate_ms: u64) -> Self {
 		self.handler.target_frame_duration = Duration::from_mins(target_frame_rate_ms);
+		self
+	}
+	#[inline]
+	pub fn with_render_backend(mut self, backends: VxGpuBackend) -> Self {
+		self.handler.backends = Some(backends);
 		self
 	}
 	#[inline]

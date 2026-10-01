@@ -12,7 +12,7 @@ use crate::{
 			VxWidget, VxWidgetHandler, VxWidgetId
 		}, window_function::VxWindowFunctions
 	}, core::{
-		gpu_resource::VxGpuResource,
+		gpu::VxGpuResource,
 		renderer::VxRenderer,
 		resource::VxAppResource,
 		scene::VxScene,
@@ -97,7 +97,7 @@ pub trait VxWindowBuilder: Send + 'static {
 	fn window_attr_b(&self) -> &VxWindowAttributes;
 }
 
-pub struct VxWindowStats {
+pub struct VxWindowContext {
 	pub(crate) window: Arc<Window>,
 	pub(crate) proxy: EventLoopProxy<VxEvent>,
 	surface: wgpu::Surface<'static>,
@@ -113,12 +113,13 @@ pub struct VxWindowStats {
 	window_size: VxSize,
 }
 
-impl VxWindowStats {
+impl VxWindowContext {
 	pub fn new(gpu: &VxGpuResource, window: Arc<Window>, proxy: EventLoopProxy<VxEvent>) -> Self {
+		window.set_ime_allowed(true);
 		let size = window.inner_size();
 
 		let surface = gpu.instance.create_surface(window.clone())
-			.expect("VxWindowStats> Critical: failed to create_surface.");
+			.expect("VxWindowContext> Critical: failed to create_surface.");
 
 		let caps = surface.get_capabilities(&gpu.adapter);
 		let config = wgpu::SurfaceConfiguration {
@@ -265,12 +266,23 @@ impl VxWindowStats {
 			})
 			.unwrap_or_else(|| VxThemeMode::Dark)
 	}
+	#[inline]
+	pub fn sync_system_theme(&mut self) {
+		self.palette = VxColorPalette::from_theme(self.theme())
+	}
+	#[inline]
+	pub fn set_theme(&mut self, theme: VxThemeMode) {
+		if self.palette.theme() == theme { return; }
+		self.palette = VxColorPalette::from_theme(theme);
+		self.is_dirty = true;
+		self.next_update_mode = VxDirtyCheckResult::All;
+	}
 }
 
 pub trait VxWindowAccessor: std::any::Any {
-	fn stats(&self) -> &Option<VxWindowStats>;
-	fn stats_mut(&mut self) -> &mut Option<VxWindowStats>;
-	fn set_stats(&mut self, stat: VxWindowStats);
+	fn context(&self) -> &Option<VxWindowContext>;
+	fn context_mut(&mut self) -> &mut Option<VxWindowContext>;
+	fn set_context(&mut self, context: VxWindowContext);
 	fn window_attr(&self) -> &VxWindowAttributes;
 	fn create_window_attr(&self) -> WindowAttributes {
 		self.window_attr().create_window_attr()
@@ -280,13 +292,18 @@ pub trait VxWindowAccessor: std::any::Any {
 pub trait VxWindow: VxWindowAccessor {
 	/// ## VxWindow> events> init_event()
 	/// Called during window initalization.
-	/// #### Note: [`VxWindowInternal::stats`] will always return `Some(stats)` when this event is triggered.
+	/// #### Note: [`VxWindowAccessor::context`] will always return `Some(context)` when this event is triggered.
 	fn init_event(&mut self) {}
-	fn has_immediate(&self) -> bool { false }
+	fn has_immediate(&self) -> bool {
+		self.context()
+			.as_ref()
+			.map(|ctx| ctx.scene().has_immediate_widget())
+			.unwrap_or_else(|| false)
+	}
 
 	fn update_event(&mut self, res: &mut VxAppResource) {
-		if let Some(stat) = self.stats_mut() {
-			stat.update_event(res);
+		if let Some(ctx) = self.context_mut() {
+			ctx.update_event(res);
 		}
 	}
 
@@ -323,33 +340,33 @@ pub trait VxWindow: VxWindowAccessor {
 	}
 
 	fn mouse_press_event(&mut self, event: &VxMouseEvent) -> VxEventResult {
-		self.stats_mut().as_mut()
-			.map_or(VxEventResult::Accept,	|stats| stats.scene.mouse_press_event(event))
+		self.context_mut().as_mut()
+			.map_or(VxEventResult::Accept,	|ctx| ctx.scene.mouse_press_event(event))
 	}
 	fn mouse_release_event(&mut self, event: &VxMouseEvent) -> VxEventResult {
-		self.stats_mut().as_mut()
-			.map_or(VxEventResult::Accept,	|stats| stats.scene.mouse_release_event(event))
+		self.context_mut().as_mut()
+			.map_or(VxEventResult::Accept,	|ctx| ctx.scene.mouse_release_event(event))
 	}
 	fn mouse_move_event(&mut self, event: &VxMouseEvent) -> VxEventResult {
-		self.stats_mut().as_mut()
-			.map_or(VxEventResult::Accept,	|stats| stats.scene.mouse_move_event(event))
+		self.context_mut().as_mut()
+			.map_or(VxEventResult::Accept,	|ctx| ctx.scene.mouse_move_event(event))
 	}
 	fn mouse_wheel_event(&mut self, event: &VxMouseEvent) -> VxEventResult {
-		self.stats_mut().as_mut()
-			.map_or(VxEventResult::Accept,	|stats| stats.scene.mouse_wheel_event(event))
+		self.context_mut().as_mut()
+			.map_or(VxEventResult::Accept,	|ctx| ctx.scene.mouse_wheel_event(event))
 	}
 	fn key_press_event(&mut self, event: &VxKeyEvent) -> VxEventResult {
-		self.stats_mut().as_mut()
-			.map_or(VxEventResult::Accept,	|stats| stats.scene.key_press_event(event))
+		self.context_mut().as_mut()
+			.map_or(VxEventResult::Accept,	|ctx| ctx.scene.key_press_event(event))
 	}
 	fn key_release_event(&mut self, event: &VxKeyEvent) -> VxEventResult {
-		self.stats_mut().as_mut()
-			.map_or(VxEventResult::Accept,	|stats| stats.scene.key_release_event(event))
+		self.context_mut().as_mut()
+			.map_or(VxEventResult::Accept,	|ctx| ctx.scene.key_release_event(event))
 	}
 
 	fn resize_event(&mut self, gpu: &VxGpuResource, event: &VxWindowEvent) -> VxEventResult {
-		self.stats_mut().as_mut()
-			.map_or(VxEventResult::Accept,	|stats| stats.resized_event(gpu, event.size()))
+		self.context_mut().as_mut()
+			.map_or(VxEventResult::Accept,	|ctx| ctx.resized_event(gpu, event.size()))
 	}
 	fn show_event(&self) -> VxEventResult {
 		VxEventResult::Accept
@@ -358,83 +375,84 @@ pub trait VxWindow: VxWindowAccessor {
 		VxEventResult::Accept
 	}
 
-	fn theme_changed_event(&self, new_theme: VxThemeMode) {
-		let _ = new_theme;
+	fn theme_changed_event(&mut self, new_theme: VxThemeMode) {
+		self.context_mut().as_mut()
+			.map(|ctx| ctx.set_theme(new_theme));
 	}
 }
 
 pub trait VxWindowExt: VxWindow {
 	#[inline]
 	fn add_widget<W: VxWidget>(&mut self, widget: W) -> Option<VxWidgetHandler<W>> {
-		self.stats_mut().as_mut()
-			.map(|stats| stats.scene.add_widget(widget))
+		self.context_mut().as_mut()
+			.map(|ctx| ctx.scene.add_widget(widget))
 	}
 	#[inline]
 	fn add_widgets(&mut self, widgets: impl IntoIterator<Item = Box<dyn VxWidget>>) -> Option<Vec<VxWidgetId>> {
-		self.stats_mut().as_mut()
-			.and_then(|stats| {
+		self.context_mut().as_mut()
+			.and_then(|ctx| {
 				Some(widgets.into_iter()
-					.map(|w| stats.scene.add_widget_box(w))
+					.map(|w| ctx.scene.add_widget_box(w))
 					.collect::<Vec<_>>())
 			})
 	}
 	#[inline]
 	fn get_widget<W: VxWidget>(&self, handler: VxWidgetHandler<W>) -> Option<&W> {
-		self.stats().as_ref()
-			.and_then(|stats| stats.scene.get_widget(handler))
+		self.context().as_ref()
+			.and_then(|ctx| ctx.scene.get_widget(handler))
 	}
 	#[inline]
 	fn get_widget_mut<W: VxWidget>(&mut self, handler: VxWidgetHandler<W>) -> Option<&mut W> {
-		self.stats_mut().as_mut()
-			.and_then(|stats| stats.scene.get_widget_mut(handler))
+		self.context_mut().as_mut()
+			.and_then(|ctx| ctx.scene.get_widget_mut(handler))
 	}
 	#[inline]
 	fn remove_widget<W: VxWidget>(&mut self, handler: VxWidgetHandler<W>) -> Option<W> {
-		self.stats_mut().as_mut()?.scene_mut().remove_widget(handler)
+		self.context_mut().as_mut()?.scene_mut().remove_widget(handler)
 	}
 	#[inline]
 	fn remove_widget_id(&mut self, id: VxWidgetId) -> Option<Box<dyn VxWidget>> {
-		self.stats_mut().as_mut()?.scene_mut().remove_widget_id(id)
+		self.context_mut().as_mut()?.scene_mut().remove_widget_id(id)
 	}
 	#[inline]
 	fn set_fixed_size(&self, size: Option<VxSize>) {
-		self.stats().as_ref()
-			.map(|stats| VxWindowFunctions::set_fixed_size(&stats.window, size));
+		self.context().as_ref()
+			.map(|ctx| VxWindowFunctions::set_fixed_size(&ctx.window, size));
 	}
 	#[inline]
 	fn set_minimum_size(&self, size: Option<VxSize>) {
-		self.stats().as_ref()
-			.map(|stats| VxWindowFunctions::set_minimum_size(&stats.window, size));
+		self.context().as_ref()
+			.map(|ctx| VxWindowFunctions::set_minimum_size(&ctx.window, size));
 	}
 	#[inline]
 	fn set_maximum_size(&self, size: Option<VxSize>) {
-		self.stats().as_ref()
-			.map(|stats| VxWindowFunctions::set_maximum_size(&stats.window, size));
+		self.context().as_ref()
+			.map(|ctx| VxWindowFunctions::set_maximum_size(&ctx.window, size));
 	}
 	#[inline]
 	fn set_window_resizable(&self, resizable: bool) {
-		self.stats().as_ref()
-			.map(|stats| VxWindowFunctions::set_window_resizable(&stats.window, resizable));
+		self.context().as_ref()
+			.map(|ctx| VxWindowFunctions::set_window_resizable(&ctx.window, resizable));
 	}
 	#[inline]
 	fn set_transparent(&self, transparent: bool) {
-		self.stats().as_ref()
-			.map(|stats| VxWindowFunctions::set_transparent(&stats.window, transparent));
+		self.context().as_ref()
+			.map(|ctx| VxWindowFunctions::set_transparent(&ctx.window, transparent));
 	}
 	#[inline]
 	fn show_fullscreen(&self) {
-		self.stats().as_ref()
-			.map(|stats| VxWindowFunctions::show_fullscreen(&stats.window));
+		self.context().as_ref()
+			.map(|ctx| VxWindowFunctions::show_fullscreen(&ctx.window));
 	}
 	#[inline]
 	fn show_normal(&self) {
-		self.stats().as_ref()
-			.map(|stats| VxWindowFunctions::show_normal(&stats.window));
+		self.context().as_ref()
+			.map(|ctx| VxWindowFunctions::show_normal(&ctx.window));
 	}
 	#[inline]
 	fn is_fullscreen(&self) -> bool {
-		self.stats().as_ref()
-			.map_or(false, |stats| VxWindowFunctions::is_fullscreen(&stats.window))
+		self.context().as_ref()
+			.map_or(false, |ctx| VxWindowFunctions::is_fullscreen(&ctx.window))
 	}
 	#[inline]
 	fn close(&self) {
@@ -442,33 +460,33 @@ pub trait VxWindowExt: VxWindow {
 		if res == VxEventResult::Ignore {
 			return;
 		}
-		self.stats().as_ref()
-			.map(|stats| VxWindowFunctions::close(&stats.window, &stats.proxy));
+		self.context().as_ref()
+			.map(|ctx| VxWindowFunctions::close(&ctx.window, &ctx.proxy));
 	}
 	#[inline]
 	fn show(&self, window: Box<dyn VxWindowBuilder>) {
-		self.stats().as_ref()
-			.map(|stats| VxWindowFunctions::show(window, &stats.proxy));
+		self.context().as_ref()
+			.map(|ctx| VxWindowFunctions::show(window, &ctx.proxy));
 	}
 	#[inline]
 	fn update(&mut self) {
-		self.stats_mut().as_mut()
-			.map(|stats| stats.set_dirty(true));
+		self.context_mut().as_mut()
+			.map(|ctx| ctx.set_dirty(true));
 	}
 	#[inline]
 	fn set_window_layer(&self, layer: VxWindowLayer) {
-		self.stats().as_ref()
-			.map(|stats| VxWindowFunctions::set_window_layer(&stats.window, layer));
+		self.context().as_ref()
+			.map(|ctx| VxWindowFunctions::set_window_layer(&ctx.window, layer));
 	}
 	#[inline]
 	fn set_window_minimizable(&self, minimizable: bool) {
-		self.stats().as_ref()
-			.map(|stats| VxWindowFunctions::set_window_minimizable(&stats.window, minimizable));
+		self.context().as_ref()
+			.map(|ctx| VxWindowFunctions::set_window_minimizable(&ctx.window, minimizable));
 	}
 	#[inline]
 	fn theme(&self) -> VxThemeMode {
-		self.stats().as_ref()
-			.map(|stats| stats.theme()).unwrap_or_else(|| VxThemeMode::Dark)
+		self.context().as_ref()
+			.map(|ctx| ctx.theme()).unwrap_or_else(|| VxThemeMode::Dark)
 	}
 }
 impl<T: VxWindow + ?Sized> VxWindowExt for T {}

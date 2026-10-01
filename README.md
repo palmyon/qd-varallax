@@ -72,16 +72,16 @@ Manages the `winit` EventLoop and WindowEvents, dispatching them to their respec
 * <b><a href = "./qd-varallax-core/src/core/resource.rs">VxAppResource</a></b> -
 Manages the `wgpu` resources and maintains application-wide shared data.
 * <b><a href = "./qd-varallax-core/src/core/renderer.rs">VxRenderer</a></b> -
-A component that sorts vertices from <a href = "./qd-varallax-core/src/abstracts/abstract_windows.rs">VxWindowStats</a>,
+A component that sorts vertices from <a href = "./qd-varallax-core/src/abstracts/abstract_windows.rs">VxWindowContext</a>,
 writing them to a buffer and executing batch rendering.
-* <b><a href = "./qd-varallax-core/src/abstracts/abstract_windows.rs">VxWindowStats</a></b> - 
+* <b><a href = "./qd-varallax-core/src/abstracts/abstract_windows.rs">VxWindowContext</a></b> - 
 Manages per-window resources serves as the core data for `VxWindow`.
 * <b><a href = "./qd-varallax-core/src/painter/painter.rs">VxPainter</a></b> - 
-Manages by `VxWindowStats` to generate vertices and rendering data for each widget during the `paint` event.
+Manages by `VxWindowContext` to generate vertices and rendering data for each widget during the `paint` event.
 * <b><a href = "./qd-varallax-core/src/core/scene.rs">VxScene</a></b> - 
 A component that manages widget instances and dispatches various events to `VxWidget`.
 * <b><a href = "./qd-varallax-core/src/abstracts/abstract_widgets.rs">VxWidget</a></b> - 
-The core trait for widgets. Implementing this trait and incorporating `VxWidgetStats` allows a type to function as a widget.
+The core trait for widgets. Implementing this trait and incorporating `VxWidgetContext` allows a type to function as a widget.
 
 ## Main Functions
 ### Application
@@ -113,7 +113,7 @@ and leverages custom draw batching for efficient rendering.
 * Utilizes a `WideBVH`(Bounding Volume Hierarchy) via
 <a href = "./qd-varallax-core/src/core/bvh.rs">`VxSpatialIndex`</a> (powered by `parry2d`) to acceralate
 hit detection, reducing the search complexity from <b><i>O(n)</i></b> to <b><i>O(logN)</i></b>.
-* Dispatches the `VxPainter` received from `VxWidgetStats` to all top-level widgets, and recursively to their child widgets.
+* Dispatches the `VxPainter` received from `VxWidgetContext` to all top-level widgets, and recursively to their child widgets.
 
 # Quick start
 This is a minimal example of creating a window using 
@@ -227,13 +227,13 @@ QD-Varallaxでは、大まかに以下の図(英語版と共通)のようなア�
 ## 主要コンポーネント
 * <b><a href = "./qd-varallax-core/src/core/application.rs">VxApplication</a></b> - winitのイベントループとウィンドウイベントを管理し、それぞれのウィンドウに振り分ける。
 * <b><a href = "./qd-varallax-core/src/core/resource.rs">VxAppResource</a></b> - wgpuのリソースを管理し、アプリ共通のデータを保有&管理する。
-* <b><a href = "./qd-varallax-core/src/core/renderer.rs">VxRenderer</a></b> - <a href = "./qd-varallax-core/src/abstracts/abstract_windows.rs">VxWindowStats</a>から
+* <b><a href = "./qd-varallax-core/src/core/renderer.rs">VxRenderer</a></b> - <a href = "./qd-varallax-core/src/abstracts/abstract_windows.rs">VxWindowContext</a>から
 受け取った頂点をソートしてバッファに書き込み、バッチング描画を実行するコンポーネント。
-* <b><a href = "./qd-varallax-core/src/abstracts/abstract_windows.rs">VxWindowStats</a></b> - ウィンドウ単位のリソースを管理し、ウィンドウ本体のデータとして動作する。
-* <b><a href = "./qd-varallax-core/src/painter/painter.rs">VxPainter</a></b> - `VxWindowStats`により管理され、paintループでウィジェットの頂点や描画データを作成する。
+* <b><a href = "./qd-varallax-core/src/abstracts/abstract_windows.rs">VxWindowContext</a></b> - ウィンドウ単位のリソースを管理し、ウィンドウ本体のデータとして動作する。
+* <b><a href = "./qd-varallax-core/src/painter/painter.rs">VxPainter</a></b> - `VxWindowContext`により管理され、paintループでウィジェットの頂点や描画データを作成する。
 * <b><a href = "./qd-varallax-core/src/core/scene.rs">VxScene</a></b> - ウィジェット本体を管理し、ウィジェットへ各イベントを配信するコンポーネント。
 * <b><a href = "./qd-varallax-core/src/abstracts/abstract_widgets.rs">VxWidget</a></b> - 
-ウィジェット本体となるトレイト。このトレイトを継承し、`VxWidgetStats`を持たせることで、ウィジェットとして動作する。
+ウィジェット本体となるトレイト。このトレイトを継承し、`VxWidgetContext`を持たせることで、ウィジェットとして動作する。
 
 ## 主要機能
 ### アプリケーション
@@ -273,7 +273,7 @@ QD-Varallaxでは、大まかに以下の図(英語版と共通)のようなア�
 を使った高速ヒット判定を実現。従来の
 <i><b>O(n)</b></i> 回のウィジェット探索ループから、<i><b>O(log N)</b></i>
 回まで減少。
-* <a href = "./qd-varallax-core/src/abstracts/abstract_windows.rs">VxWidgetStats</a>
+* <a href = "./qd-varallax-core/src/abstracts/abstract_windows.rs">VxWidgetContext</a>
 から受け取った
 <a href = "./qd-varallax-core/src/painter/painter.rs">VxPainter</a>を、全てのトップレベルウィジェットに配信し、子ウィジェットにも再帰的に配信する。
 

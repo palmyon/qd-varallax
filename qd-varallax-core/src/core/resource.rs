@@ -1,6 +1,5 @@
 use crate::core::{
-	gpu_resource::VxGpuResource,
-	systems::{
+	gpu::{VxGpuBackend, VxGpuResource}, systems::{
 		VxFontSystem,
 		VxTextureSystem
 	}
@@ -15,8 +14,8 @@ pub struct VxAppResource {
 }
 
 impl VxAppResource {
-	pub(crate) fn new() -> Self {
-		let gpu = pollster::block_on(VxGpuResource::new());
+	pub(crate) fn new(backends: Option<VxGpuBackend>) -> Self {
+		let gpu = pollster::block_on(VxGpuResource::new(backends));
 		let textures = VxTextureSystem::new(&gpu);
 		let mut fonts = VxFontSystem::new(&gpu);
 

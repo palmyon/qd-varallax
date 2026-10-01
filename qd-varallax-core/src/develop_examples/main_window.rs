@@ -4,7 +4,7 @@
 // #[derive(VxWindowImpl)]
 // pub struct DemoWindow {
 // 	#[attr(stat)]
-// 	stat: Option<VxWindowStats>,
+// 	stat: Option<VxWindowContext>,
 // 	#[attr(w_attr)]
 // 	window_attr: VxWindowAttributes,
 // }

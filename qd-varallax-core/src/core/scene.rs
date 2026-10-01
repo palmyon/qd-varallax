@@ -55,21 +55,28 @@ impl<'a> VxDirtyProcessContext<'a> {
 	}
 
 	pub fn process_update(&mut self, id: VxWidgetId, flag: VxDirtyFlag) -> VxDirtyCheckResult {
-		let is_immediate = if let Some(w) = self.widgets.get(id) {
-			w.stats().update_mode() == VxRenderMode::Immediate
-		} else { false };
+		let (is_immediate, children) = if let Some(w) = self.widgets.get(id) {
+			let is_immediate = w.context().update_mode() == VxRenderMode::Immediate;
+			let children = if w.children().is_empty() { None } else { Some(w.children().clone()) };
+			(is_immediate, children)
+		} else { (false, None) };
 		if flag == VxDirtyFlag::CLEAN {
 			return  if is_immediate { VxDirtyCheckResult::OnlyImmediate } else { VxDirtyCheckResult::None };
 		}
 		if flag.contains(VxDirtyFlag::LAYOUT) {
 			self.process_update_layout(id);
-			return VxDirtyCheckResult::All;
+		}
+		if let Some(child) = children {
+			for c in child {
+				return self.process_update(c, flag);
+			}
 		}
 		VxDirtyCheckResult::All
 	}
 
 	fn process_update_layout(&mut self, id: VxWidgetId) {
-		let initial_rect = if let Some(widget) = self.widgets.get(id) {
+		let target_widget = Self::find_top_level_box_layout(self.widgets, id).unwrap_or_else(|| id);
+		let initial_rect = if let Some(widget) = self.widgets.get(target_widget) {
 			if widget.parent().is_none() {
 				VxRect::from_pos_size((0, 0).into(), self.window_size)
 			} else {
@@ -82,7 +89,7 @@ impl<'a> VxDirtyProcessContext<'a> {
 		self.box_layout_resolver.clear_cache();
 		self.box_layout_resolver.resolve_container(
 			self.bounding_rect_creator,
-			id,
+			target_widget,
 			initial_rect,
 			self.widgets,
 		);
@@ -91,7 +98,7 @@ impl<'a> VxDirtyProcessContext<'a> {
 
 		for (update_id, rect) in computed_rects {
 			if let Some(widget) = self.widgets.get_mut(update_id) {
-				let stats = widget.stats_mut();
+				let stats = widget.context_mut();
 				stats.set_block_dirty(true);
 				stats.set_pos(rect.pos());
 				stats.set_bounding_rect(rect.with_pos(VxVec2::default()));
@@ -104,7 +111,7 @@ impl<'a> VxDirtyProcessContext<'a> {
 
 	fn process_update_spatial_index(&mut self, id: VxWidgetId, rect: VxRect) {
 		let Some((spatial_flag, spatial_parent_id)) = self.widgets.get(id)
-			.map(|w| (w.spatial_hierarchy_flag(), w.stats().spatial_hierarchy_parent())) else { return; };
+			.map(|w| (w.spatial_hierarchy_flag(), w.context().spatial_hierarchy_parent())) else { return; };
 
 		let global_pos = Self::calc_global_pos(self.widgets, id);
 		let global_rect = rect.with_pos(global_pos);
@@ -121,6 +128,21 @@ impl<'a> VxDirtyProcessContext<'a> {
 				self.hbvh.need_update_index.insert(VxSpatialUpdateFlag::Flat);
 			}
 		}
+	}
+
+	fn find_top_level_box_layout(widgets: &VxGenVector<Box<dyn VxWidget>>, mut current_id: VxWidgetId) -> Option<VxWidgetId> {
+		let mut last_top_layout = None;
+		while let Some(widget) = widgets.get(current_id) {
+			if widget.as_box_layout().is_some() {
+				last_top_layout = Some(current_id);
+			}
+			if let Some(parent) = widget.parent() {
+				current_id = parent;
+			} else {
+				break;
+			}
+		}
+		last_top_layout
 	}
 
 	pub fn finish(&mut self) {
@@ -277,7 +299,7 @@ impl VxScene {
 	}
 
 	pub fn add_widget_box(&mut self, mut widget: Box<dyn VxWidget>) -> VxWidgetId {
-		let children = widget.stats_mut().take_children_widgets();
+		let children = widget.context_mut().take_children_widgets();
 		let id = VxWidgetId::new(self.widgets.vacant_id());
 
 		Self::register_widget(
@@ -297,17 +319,17 @@ impl VxScene {
 			match parent_hierarchy_flag {
 				VxSpatialHierarchyFlag::HierarchyParent => {
 					child.set_spatial_hierarchy_flag(VxSpatialHierarchyFlag::HierarchyChild);
-					child.stats_mut().set_spatial_hierarchy_parent(id);
+					child.context_mut().set_spatial_hierarchy_parent(id);
 				}
 				VxSpatialHierarchyFlag::HierarchyChild => {
 					child.set_spatial_hierarchy_flag(VxSpatialHierarchyFlag::HierarchyChild);
-					child.stats_mut().set_spatial_hierarchy_parent(Self::find_spatial_index(&self.widgets, id));
+					child.context_mut().set_spatial_hierarchy_parent(Self::find_spatial_index(&self.widgets, id));
 				}
 				_ => {}
 			}
 			let child_id = self.add_widget_box(child);
 			if let Some(parent) = self.widgets.get_mut(id) {
-				parent.stats_mut().add_child(child_id);
+				parent.context_mut().add_child(child_id);
 			}
 		}
 		self.dirty_command_sender.mark_dirty(id, VxDirtyFlag::REBUILD_ALL);
@@ -322,8 +344,8 @@ impl VxScene {
 		immediate_widgets: &mut Vec<VxWidgetId>,
 		hbvh: &mut VxHbvh<VxWidgetId>,
 	) {
-		widget.stats_mut().set_widget_id(widget_id);
-		widget.stats_mut().set_dirty_command_sender(dirty_command_sender);
+		widget.context_mut().set_widget_id(widget_id);
+		widget.context_mut().set_dirty_command_sender(dirty_command_sender);
 
 		if widget.parent().is_none() {
 			top_level_widgets.push(widget_id);
@@ -395,6 +417,9 @@ impl VxScene {
 }
 
 impl VxScene {
+	pub fn has_immediate_widget(&self) -> bool {
+		!self.immediate_widgets.is_empty()
+	}
 	pub fn get_widget<W: VxWidget>(&self, handler: VxWidgetHandler<W>) -> Option<&W> {
 		self.widgets.get(handler.id())?
 			.as_any()
@@ -536,7 +561,7 @@ impl VxScene {
 	pub fn resized_event(&mut self, _: VxSize) -> VxEventResult {
 		self.top_level_widgets.iter().for_each(|id| {
 			if let Some(widget) = self.widgets.get(*id) {
-				widget.stats().set_dirty_flag(VxDirtyFlag::LAYOUT);
+				widget.context().set_dirty_flag(VxDirtyFlag::LAYOUT);
 			}
 		});
 		VxEventResult::Accept

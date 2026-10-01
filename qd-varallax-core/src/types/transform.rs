@@ -375,6 +375,12 @@ impl VxTransform {
 			pivot
 		}
 	}
+	#[inline]
+	pub fn from_translation(translation: VxVec2) -> Self {
+		let mut transform = Self::default();
+		transform.set_pos(translation);
+		transform
+	}
 
 	// getters
 	#[inline]

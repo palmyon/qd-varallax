@@ -6,8 +6,8 @@ pub use crate::abstracts::{
 		VxBoxLayoutAccessor,
 		VxBoxLayoutFunctionExt,
 		VxBoxLayoutResolver,
-		VxBoxLayoutStats,
-		VxBoxLayoutStatsWrapExt,
+		VxBoxLayoutContext,
+		VxBoxLayoutContextWrapExt,
 		VxImmediateLayoutContext,
 		VxOrientation,
 		VxSizeHint,
@@ -22,8 +22,8 @@ pub use crate::abstracts::{
 		VxWidgetHandler,
 		VxWidgetId,
 		VxWidgetLayoutExt,
-		VxWidgetStats,
-		VxWidgetStatsWrapExt,
+		VxWidgetContext,
+		VxWidgetContextWrapExt,
 	},
 	abstract_window::{
 		VxWindow,
@@ -32,6 +32,6 @@ pub use crate::abstracts::{
 		VxWindowBuilder,
 		VxWindowExt,
 		VxWindowLayer,
-		VxWindowStats,
+		VxWindowContext,
 	}
 };
