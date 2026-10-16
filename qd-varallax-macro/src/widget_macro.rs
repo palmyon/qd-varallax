@@ -171,3 +171,45 @@ pub fn vx_widget_button_impl(input: TokenStream) -> TokenStream {
 	};
 	TokenStream::from(expanded)
 }
+
+pub fn vx_widget_value_impl(input: TokenStream) -> TokenStream {
+	let input = parse_macro_input!(input as DeriveInput);
+	let name = input.ident;
+
+	let mut component_field = None;
+
+	if let Data::Struct(data) = input.data {
+		if let Fields::Named(fields) = data.fields {
+			for field in fields.named {
+				let field_name = field.ident.unwrap();
+
+				for attr in field.attrs {
+					if attr.path().is_ident("attr_value") {
+						let _ = attr.parse_nested_meta(|meta| {
+							if meta.path.is_ident("component") {
+								component_field = Some(field_name.clone());
+							}
+							Ok(())
+						});
+					}
+				}
+			}
+		}
+	}
+
+	let component = component_field.expect("VxWidgetValueImpl> Need #[attr_value(component)] on [VxValueWidgetComponent].");
+
+	let expanded = quote! {
+		impl VxWidgetValueExtension for #name {
+			#[inline]
+			fn value_component(&self) -> &VxValueWidgetComponent {
+				&self.#component
+			}
+			#[inline]
+			fn value_component_mut(&mut self) -> &mut VxValueWidgetComponent {
+				&mut self.#component
+			}
+		}
+	};
+	TokenStream::from(expanded)
+}

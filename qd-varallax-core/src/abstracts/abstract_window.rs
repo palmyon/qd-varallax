@@ -195,12 +195,12 @@ impl VxWindowContext {
 			VxDirtyCheckResult::All => {
 				self.scene.paint_event(res, &mut self.painter, &self.palette);
 				self.take_and_set_vertices_to_renderer(res, VxRenderMode::Retained);
-				self.scene.immediate_paint_event(res, &self.input, &mut self.painter);
+				self.scene.immediate_paint_event(&self.input, &mut self.painter);
 				// バッファをまとめたかったが、Immediate描画のバッファがRetainedに残存してしまうので仕方なく分ける
 				self.take_and_set_vertices_to_renderer(res, VxRenderMode::Immediate);
 			}
 			VxDirtyCheckResult::OnlyImmediate => {
-				self.scene.immediate_paint_event(res, &self.input, &mut self.painter);
+				self.scene.immediate_paint_event(&self.input, &mut self.painter);
 				self.take_and_set_vertices_to_renderer(res, VxRenderMode::Immediate);
 			}
 			_ => { return; }
@@ -228,7 +228,7 @@ impl VxWindowContext {
 	}
 
 	pub(crate) fn check_dirty(&mut self, res: &mut VxAppResource) -> bool {
-		let dirty = self.scene.check_dirty(res, self.window_size);
+		let dirty = self.scene.check_dirty(res);
 		if dirty != VxDirtyCheckResult::None || self.is_dirty {
 			self.next_update_mode = if self.is_dirty { VxDirtyCheckResult::All } else { dirty };
 			self.is_dirty = false;

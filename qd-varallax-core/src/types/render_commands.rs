@@ -1,6 +1,6 @@
 use crate::{
 	core::glyph::VxFont, types::{
-		color::VxColor, transform::VxMatrix3x3
+		color::VxColor, transform::VxMatrix3x3, vertex::VxAbstractVertex
 	}
 };
 
@@ -73,13 +73,13 @@ impl VxVertexZValue {
 	}
 }
 
-pub(crate) struct VxVertexContainer<T> {
+pub(crate) struct VxVertexContainer<T: VxAbstractVertex> {
 	pub(crate) verts: Vec<T>,
 	pub(crate) index: Vec<u32>,
 	z_value: VxVertexZValue,
 }
 
-impl<T> VxVertexContainer<T> {
+impl<T: VxAbstractVertex> VxVertexContainer<T> {
 	#[inline]
 	pub fn new(verts: Vec<T>, index: Vec<u32>) -> Self {
 		Self {
@@ -110,11 +110,11 @@ impl<T> VxVertexContainer<T> {
 pub struct VxRenderModuleId(pub u32);
 
 impl VxRenderModuleId {
-	pub const AVOID_DUPLICATE_ID_OFFSET: u32 = 20;
+	const AVOID_DUPLICATE_ID_OFFSET: u32 = 20;
 	pub const VERTEX: Self = Self(0);
 	pub const SDF: Self = Self(1);
 	pub const TEXTURE: Self = Self(2);
-	pub const TEXT: Self = Self(3);
+	pub const GLYPH: Self = Self(3);
 
 	pub const fn custom(id: u32) -> Self {
 		Self(id + Self::AVOID_DUPLICATE_ID_OFFSET)
@@ -252,8 +252,4 @@ impl VxDirtyCheckResult {
 			*self = other;
 		}
 	}
-}
-
-pub trait VxVertexRenderModuleTarget: bytemuck::Pod + bytemuck::Zeroable {
-	const MODULE_ID: VxRenderModuleId;
 }

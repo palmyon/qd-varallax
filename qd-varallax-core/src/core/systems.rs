@@ -20,31 +20,21 @@ use crate::{
 			VxFontDataGenerator,
 			VxMtsdfGenerator
 		},
-	},
-	painter::tessellate::VxTessellator,
-	types::{
-		color::VxColorU8,
-		gen_vector::{
-			VxGenIndex,
-			VxGenVector,
-			VxGenSlot
-		},
-		geometry::{
+	}, painter::tessellate::VxTessellator, types::{
+		color::VxColorU8, gen_vector::{
+			VxGenIndex, VxGenSlot, VxGenVector
+		}, geometry::{
 			VxRect,
 			VxSize,
 			VxVec2
-		},
-		render_commands::{
+		}, render_commands::{
 			VxDrawTextData, 
 			VxVertexContainer,
-		},
-		texture::{
+		}, texture::{
 			VxImage,
 			VxTexture
-		},
-		vertex::{
-			VxTextVertex,
-			VxTextureVertex
+		}, vertex::{
+			VxAbstractVertex, VxGlyphVertex, VxTextureVertex
 		},
 	},
 };
@@ -436,7 +426,7 @@ impl VxFontSystem {
 		&mut self,
 		gpu: &VxGpuResource,
 		mut data: Vec<VxDrawTextData>,
-	) -> Vec<VxVertexContainer<VxTextVertex>> {
+	) -> Vec<VxVertexContainer<VxGlyphVertex>> {
 		let total_bytes: usize = data.iter().map(|cmd| cmd.text.len()).sum();
 		let mut all_array = Vec::with_capacity(total_bytes);
 
@@ -481,7 +471,7 @@ impl VxFontSystem {
 
 				verts.iter_mut().for_each(|v| {
 					let pos = cmd.matrix.transform_point(v.to_vec2());
-					v.set_position_vec2(pos);
+					v.set_pos_vec2(pos);
 				});
 
 				let mut container = VxVertexContainer::new(

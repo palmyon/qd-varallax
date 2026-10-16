@@ -89,7 +89,7 @@ pub enum VxColorChannelSwap {
 /// println!("color: {}", black); // "color: #000000ff"
 /// ```
 #[repr(C)]
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct VxColor {
 	r: f32,
 	g: f32,
@@ -306,7 +306,7 @@ impl VxColor {
 	/// ## VxColor> constructors> from_vxcoloru8()
 	/// Creates a new [`VxColor`] from [`VxColorU8`].
 	#[inline]
-	pub fn from_vxcoloru8(color: VxColorU8) -> Self {
+	pub const fn from_vxcoloru8(color: VxColorU8) -> Self {
 		let (r, g, b, a) = color.to_tuple();
 		Self::rgba_u8(r, g, b, a)
 	}
@@ -314,64 +314,64 @@ impl VxColor {
 	/// ## VxColor> getters> red()
 	/// Returns the `red` component.
 	#[inline]
-	pub fn red(&self) -> f32 { self.r }
+	pub const fn red(&self) -> f32 { self.r }
 	/// ## VxColor> getters> green()
 	/// Returns the `green` component.
 	#[inline]
-	pub fn green(&self) -> f32 { self.g }
+	pub const fn green(&self) -> f32 { self.g }
 	/// ## VxColor> getters> blue()
 	/// Returns the `blue` component.
 	#[inline]
-	pub fn blue(&self) -> f32 { self.b }
+	pub const fn blue(&self) -> f32 { self.b }
 	/// ## VxColor> getters> alpha()
 	/// Returns the `alpha` component.
 	#[inline]
-	pub fn alpha(&self) -> f32 { self.a }
+	pub const fn alpha(&self) -> f32 { self.a }
 	/// ## VxColor> getters> to_tuple()
 	/// Returns the `RGBA` components as a tuple.
 	#[inline]
-	pub fn to_tuple(&self) -> (f32, f32, f32, f32) { (self.red(), self.green(), self.blue(), self.alpha()) }
+	pub const fn to_tuple(&self) -> (f32, f32, f32, f32) { (self.red(), self.green(), self.blue(), self.alpha()) }
 	/// ## VxColor> conversions> to_array()
 	/// Returns the `RGB` components as an array.
 	#[inline]
-	pub fn to_array(&self) -> [f32; 3] { [self.red(), self.green(), self.blue()] }
+	pub const fn to_array(&self) -> [f32; 3] { [self.red(), self.green(), self.blue()] }
 	/// ## VxColor> conversions> to_array_with_alpha()
 	/// Returns the `RGBA` components as an array.
 	#[inline]
-	pub fn to_array_with_alpha(&self) -> [f32; 4] { [self.red(), self.green(), self.blue(), self.alpha()] }
+	pub const fn to_array_with_alpha(&self) -> [f32; 4] { [self.red(), self.green(), self.blue(), self.alpha()] }
 
 	/// ## VxColor> getters> red_u8()
 	/// Returns the `red` component as [`u8`].
 	#[inline]
-	pub fn red_u8(&self) -> u8 { (self.r * 255.0) as u8 }
+	pub const fn red_u8(&self) -> u8 { (self.r * 255.0) as u8 }
 	/// ## VxColor> getters> green_u8()
 	/// Returns the `green` component as [`u8`].
 	#[inline]
-	pub fn green_u8(&self) -> u8 { (self.g * 255.0) as u8 }
+	pub const fn green_u8(&self) -> u8 { (self.g * 255.0) as u8 }
 	/// ## VxColor> getters> blue_u8()
 	/// Returns the `blue` component as [`u8`].
 	#[inline]
-	pub fn blue_u8(&self) -> u8 { (self.b * 255.0) as u8 }
+	pub const fn blue_u8(&self) -> u8 { (self.b * 255.0) as u8 }
 	/// ## VxColor> getters> alpha_u8()
 	/// Returns the `alpha` component as [`u8`].
 	#[inline]
-	pub fn alpha_u8(&self) -> u8 { (self.a * 255.0) as u8 }
+	pub const fn alpha_u8(&self) -> u8 { (self.a * 255.0) as u8 }
 	/// ## VxColor> getters> to_tuple_u8()
 	/// Returns the `RGBA` components as a [`u8`] tuple.
 	#[inline]
-	pub fn to_tuple_u8(&self) -> (u8, u8, u8, u8) { (self.red_u8(), self.green_u8(), self.blue_u8(), self.alpha_u8()) }
+	pub const fn to_tuple_u8(&self) -> (u8, u8, u8, u8) { (self.red_u8(), self.green_u8(), self.blue_u8(), self.alpha_u8()) }
 	/// ## VxColor> conversions> to_array_u8()
 	/// Returns the `RGB` components as an [`u8`] array.
 	#[inline]
-	pub fn to_array_u8(&self) -> [u8; 3] { [self.red_u8(), self.green_u8(), self.blue_u8()] }
+	pub const fn to_array_u8(&self) -> [u8; 3] { [self.red_u8(), self.green_u8(), self.blue_u8()] }
 	/// ## VxColor> conversions> to_array_with_alpha_u8()
 	/// Returns the `RGBA` components as an [`u8`] array.
 	#[inline]
-	pub fn to_array_with_alpha_u8(&self) -> [u8; 4] { [self.red_u8(), self.green_u8(), self.blue_u8(), self.alpha_u8()] }
+	pub const fn to_array_with_alpha_u8(&self) -> [u8; 4] { [self.red_u8(), self.green_u8(), self.blue_u8(), self.alpha_u8()] }
 	/// ## VxColor> conversions> to_vxcoloru8()
 	/// Returns the `RGBA` components as [`VxColorU8`].
 	#[inline]
-	pub fn to_vxcoloru8(&self) -> VxColorU8 {
+	pub const fn to_vxcoloru8(&self) -> VxColorU8 {
 		let (r, g, b, a) = self.to_tuple_u8();
 		VxColorU8::rgba(r, g, b, a)
 	}
@@ -723,19 +723,19 @@ impl VxColorU8 {
 	/// ## VxColorU8> constructors> rgb()
 	/// Creates a new color from [`u8`] components.
 	#[inline]
-	pub fn rgb(r: u8, g: u8, b: u8) -> Self {
+	pub const fn rgb(r: u8, g: u8, b: u8) -> Self {
 		Self { r, g, b, a: 255 }
 	}
 	/// ## VxColorU8> constructors> rgba()
 	/// Creates a new `RGBA` color from [`u8`] components.
 	#[inline]
-	pub fn rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
+	pub const fn rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
 		Self { r, g, b, a }
 	}
 	/// ## VxColorU8> constructors> rgb_f()
 	/// Creates a new color from [`f32`] components in the range `[0.0, 1.0]`.
 	#[inline]
-	pub fn rgb_f(r: f32, g: f32, b: f32) -> Self {
+	pub const fn rgb_f(r: f32, g: f32, b: f32) -> Self {
 		Self {
 			r: (r * 255.0) as u8,
 			g: (g * 255.0) as u8,
@@ -746,7 +746,7 @@ impl VxColorU8 {
 	/// ## VxColorU8> constructors> rgba_f()
 	/// Creates a new `RGBA` color from [`f32`] components in the range `[0.0, 1.0]`.
 	#[inline]
-	pub fn rgba_f(r: f32, g: f32, b: f32, a: f32) -> Self {
+	pub const fn rgba_f(r: f32, g: f32, b: f32, a: f32) -> Self {
 		Self {
 			r: (r * 255.0) as u8,
 			g: (g * 255.0) as u8,
@@ -802,7 +802,7 @@ impl VxColorU8 {
 	/// ## VxColorU8> constructors> from_vxcolor()
 	/// Creates a new [`VxColorU8`] from [`VxColor`].
 	#[inline]
-	pub fn from_vxcolor(color: VxColor) -> Self {
+	pub const fn from_vxcolor(color: VxColor) -> Self {
 		let (r, g, b, a) = color.to_tuple_u8();
 		Self::rgba(r, g, b, a)
 	}
@@ -810,64 +810,64 @@ impl VxColorU8 {
 	/// ## VxColorU8> getters> red()
 	/// Returns the `red` component.
 	#[inline]
-	pub fn red(&self) -> u8 { self.r }
+	pub const fn red(&self) -> u8 { self.r }
 	/// ## VxColorU8> getters> green()
 	/// Returns the `green` component.
 	#[inline]
-	pub fn green(&self) -> u8 { self.g }
+	pub const fn green(&self) -> u8 { self.g }
 	/// ## VxColorU8> getters> blue()
 	/// Returns the `blue` component.
 	#[inline]
-	pub fn blue(&self) -> u8 { self.b }
+	pub const fn blue(&self) -> u8 { self.b }
 	/// ## VxColor> getters> alpha()
 	/// Returns the `alpha` component.
 	#[inline]
-	pub fn alpha(&self) -> u8 { self.a }
+	pub const fn alpha(&self) -> u8 { self.a }
 	/// ## VxColorU8> getters> to_tuple()
 	/// Returns the `RGBA` components as a tuple.
 	#[inline]
-	pub fn to_tuple(&self) -> (u8, u8, u8, u8) { (self.red(), self.green(), self.blue(), self.alpha()) }
+	pub const fn to_tuple(&self) -> (u8, u8, u8, u8) { (self.red(), self.green(), self.blue(), self.alpha()) }
 	/// ## VxColorU8> conversions> to_array()
 	/// Returns the `RGB` components as an array.
 	#[inline]
-	pub fn to_array(&self) -> [u8; 3] { [self.red(), self.green(), self.blue()] }
+	pub const fn to_array(&self) -> [u8; 3] { [self.red(), self.green(), self.blue()] }
 	/// ## VxColorU8> conversions> to_array_with_alpha()
 	/// Returns the `RGBA` components as an array.
 	#[inline]
-	pub fn to_array_with_alpha(&self) -> [u8; 4] { [self.red(), self.green(), self.blue(), self.alpha()] }
+	pub const fn to_array_with_alpha(&self) -> [u8; 4] { [self.red(), self.green(), self.blue(), self.alpha()] }
 
 	/// ## VxColorU8> getters> red_f()
 	/// Returns the `red` component as [`f32`].
 	#[inline]
-	pub fn red_f(&self) -> f32 { self.r as f32 / 255.0 }
+	pub const fn red_f(&self) -> f32 { self.r as f32 / 255.0 }
 	/// ## VxColorU8> getters> green_f()
 	/// Returns the `green` component as [`f32`].
 	#[inline]
-	pub fn green_f(&self) -> f32 { self.g as f32 / 255.0 }
+	pub const fn green_f(&self) -> f32 { self.g as f32 / 255.0 }
 	/// ## VxColorU8> getters> blue_f()
 	/// Returns the `blue` component as [`f32`].
 	#[inline]
-	pub fn blue_f(&self) -> f32 { self.b as f32 / 255.0 }
+	pub const fn blue_f(&self) -> f32 { self.b as f32 / 255.0 }
 	/// ## VxColorU8> getters> alpha_f()
 	/// Returns the `alpha` component as [`f32`].
 	#[inline]
-	pub fn alpha_f(&self) -> f32 { self.a as f32 / 255.0 }
+	pub const fn alpha_f(&self) -> f32 { self.a as f32 / 255.0 }
 	/// ## VxColorU8> getters> to_tuple_f()
 	/// Returns the `RGBA` components as a [`f32`] tuple.
 	#[inline]
-	pub fn to_tuple_f(&self) -> (f32, f32, f32, f32) { (self.red_f(), self.green_f(), self.blue_f(), self.alpha_f()) }
+	pub const fn to_tuple_f(&self) -> (f32, f32, f32, f32) { (self.red_f(), self.green_f(), self.blue_f(), self.alpha_f()) }
 	/// ## VxColorU8> conversions> to_array_with_alpha_f()
 	/// Returns the `RGBA` components as an [`f32`] array.
 	#[inline]
-	pub fn to_array_f(&self) -> [f32; 3] { [self.red_f(), self.green_f(), self.blue_f()] }
+	pub const fn to_array_f(&self) -> [f32; 3] { [self.red_f(), self.green_f(), self.blue_f()] }
 	/// ## VxColorU8> conversions> to_array_with_alpha_f()
 	/// Returns the `RGBA` components as an [`f32`] array.
 	#[inline]
-	pub fn to_array_with_alpha_f(&self) -> [f32; 4] { [self.red_f(), self.green_f(), self.blue_f(), self.alpha_f()] }
+	pub const fn to_array_with_alpha_f(&self) -> [f32; 4] { [self.red_f(), self.green_f(), self.blue_f(), self.alpha_f()] }
 	/// ## VxColorU8> conversions> to_vxcolor()
 	/// Returns the `RGBA` components as [`VxColor`].
 	#[inline]
-	pub fn to_vxcolor(&self) -> VxColor {
+	pub const fn to_vxcolor(&self) -> VxColor {
 		let (r, g, b, a) = self.to_tuple();
 		VxColor::rgba_u8(r, g, b, a)
 	}
@@ -889,23 +889,23 @@ impl VxColorU8 {
 	/// ## VxColorU8> setters> set_red()
 	/// Sets the `red` component.
 	#[inline]
-	pub fn set_red(&mut self, r: u8) { self.r = r; }
+	pub const fn set_red(&mut self, r: u8) { self.r = r; }
 	/// ## VxColorU8> setters> set_green()
 	/// Sets the `green` component.
 	#[inline]
-	pub fn set_green(&mut self, g: u8) { self.g = g; }
+	pub const fn set_green(&mut self, g: u8) { self.g = g; }
 	/// ## VxColorU8> setters> set_blue()
 	/// Sets the `blue` component.
 	#[inline]
-	pub fn set_blue(&mut self, b: u8) { self.b = b; }
+	pub const fn set_blue(&mut self, b: u8) { self.b = b; }
 	/// ## VxColorU8> setters> set_alpha()
 	/// Sets the `alpha` component.
 	#[inline]
-	pub fn set_alpha(&mut self, a: u8) { self.a = a; }
+	pub const fn set_alpha(&mut self, a: u8) { self.a = a; }
 	/// ## VxColorU8> setters> set_rgba()
 	/// Sets the `RGBA` components.
 	#[inline]
-	pub fn set_rgba(&mut self, r: u8, g: u8, b: u8, a: u8) {
+	pub const fn set_rgba(&mut self, r: u8, g: u8, b: u8, a: u8) {
 		self.set_red(r);
 		self.set_green(g);
 		self.set_blue(b);
@@ -914,28 +914,28 @@ impl VxColorU8 {
 	/// ## VxColorU8> chains> with_red()
 	/// Returns a new color with the `red` component set to the given value.
 	#[inline]
-	pub fn with_red(mut self, r: u8) -> Self {
+	pub const fn with_red(mut self, r: u8) -> Self {
 		self.r = r;
 		self
 	}
 	/// ## VxColorU8> chains> with_green()
 	/// Returns a new color with the `green` component set to the given value.
 	#[inline]
-	pub fn with_green(mut self, g: u8) -> Self {
+	pub const fn with_green(mut self, g: u8) -> Self {
 		self.g = g;
 		self
 	}
 	/// ## VxColorU8> chains> with_blue()
 	/// Returns a new color with the `blue` component set to the given value.
 	#[inline]
-	pub fn with_blue(mut self, b: u8) -> Self {
+	pub const fn with_blue(mut self, b: u8) -> Self {
 		self.b = b;
 		self
 	}
 	/// ## VxColorU8> chains> with_alpha()
 	/// Returns a new color with the `alpha` component set to the given value.
 	#[inline]
-	pub fn with_alpha(mut self, a: u8) -> Self {
+	pub const fn with_alpha(mut self, a: u8) -> Self {
 		self.a = a;
 		self
 	}
@@ -957,7 +957,7 @@ impl VxColorU8 {
 
 
 // 共通処理
-fn name_to_color(name: VxColorName) -> (u8, u8, u8, u8) {
+const fn name_to_color(name: VxColorName) -> (u8, u8, u8, u8) {
 	match name {
 		VxColorName::White => (255, 255, 255, 255),
 		VxColorName::Black => (0, 0, 0, 255),
@@ -1007,7 +1007,7 @@ fn html_to_color(hex: &str) -> Result<(u8, u8, u8, u8), &'static str> {
 }
 
 #[inline]
-fn hex_to_color(hex: u32) -> (u8, u8, u8, u8) {
+const fn hex_to_color(hex: u32) -> (u8, u8, u8, u8) {
 	let r = ((hex >> 16) & 0xFF) as u8;
 	let g = ((hex >> 8) & 0xFF) as u8;
 	let b = (hex & 0xFF) as u8;
@@ -1015,7 +1015,7 @@ fn hex_to_color(hex: u32) -> (u8, u8, u8, u8) {
 }
 
 #[inline]
-fn hex_to_color_with_alpha(hex: u32) -> (u8, u8, u8, u8) {
+const fn hex_to_color_with_alpha(hex: u32) -> (u8, u8, u8, u8) {
 	(
 		(hex >> 24) as u8,
 		(hex >> 16) as u8,
@@ -1024,7 +1024,7 @@ fn hex_to_color_with_alpha(hex: u32) -> (u8, u8, u8, u8) {
 	)
 }
 
-fn swap_color(swap_mode: VxColorChannelSwap, hex: u32) -> (u8, u8, u8, u8) {
+const fn swap_color(swap_mode: VxColorChannelSwap, hex: u32) -> (u8, u8, u8, u8) {
 	let (r, g, b, a) = hex_to_color_with_alpha(hex);
 	match swap_mode {
 		VxColorChannelSwap::NoSwap => (r, g, b, a),
@@ -1037,7 +1037,7 @@ fn swap_color(swap_mode: VxColorChannelSwap, hex: u32) -> (u8, u8, u8, u8) {
 	}
 }
 
-fn change_channel(channel_mode: VxColorChannel, hex: u32) -> (u8, u8, u8, u8) {
+const fn change_channel(channel_mode: VxColorChannel, hex: u32) -> (u8, u8, u8, u8) {
 	let (r, g, b, a) = hex_to_color_with_alpha(hex);
 	match channel_mode {
 		VxColorChannel::RGBA => (r, g, b, a),

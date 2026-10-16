@@ -18,7 +18,7 @@ impl VxWidget for VxVBoxLayoutWidget {
 		VxSizeHint::ChildrenSize { padding: 0.0 }
 	}
 	fn paint(&mut self, painter: &mut VxPainter, palette: &qd_varallax_core::types::style::VxColorPalette) {
-		painter.draw_rect(self.bounding_rect().with_pos(self.pos()), VxColor::from_hex_with_alpha(0xFF000022));
+		let _ = painter;
 		let _ = palette;
 	}
 	#[inline]
@@ -37,55 +37,46 @@ impl VxBoxLayout for VxVBoxLayoutWidget {
 			fn(
 				&VxBoxLayoutContext,
 				&mut VxBoundingRectCreator<'_>,
-				VxRect,&[VxWidgetId],
+				VxRect, &[VxWidgetId],
 				&mut VxGenVector<Box<dyn VxWidget>>,
-			) -> Vec<(VxWidgetId, VxRect)>,
+				&mut Vec<(VxWidgetId, VxRect)>,
+			),
 			VxBoxLayoutContext
 		)
 	{
-		(Self::calc_vbox_layout, self.layout_context)
+		(Self::calc_layout, self.layout_context)
 	}
 }
 
-impl VxVBoxLayoutWidget {
-	pub fn new(parent: Option<VxWidgetId>) -> Self {
-		let mut layout_context = VxBoxLayoutContext::new();
-		layout_context.set_orientation(VxOrientation::Vertical);
-		let mut context = VxWidgetContext::new(parent);
-		context.set_z_value(-5);
-		Self {
-			context,
-			layout_context,
-		}
-	}
-
-	fn calc_vbox_layout(
-		stats: &VxBoxLayoutContext,
-		creator: &mut VxBoundingRectCreator,
-		container_rect: VxRect,
-		children: &[VxWidgetId],
-		widgets: &mut VxGenVector<Box<dyn VxWidget>>,
-	) -> Vec<(VxWidgetId, VxRect)> {
-		let mut results = Vec::with_capacity(children.len());
+impl VxBoxLayoutCalcrator for VxVBoxLayoutWidget {
+	fn calc_layout(
+			ctx: &VxBoxLayoutContext,
+			bounding_rect_creator: &mut VxBoundingRectCreator,
+			own_rect: VxRect,
+			children: &[VxWidgetId],
+			widgets: &mut VxGenVector<Box<dyn VxWidget>>,
+			results: &mut Vec<(VxWidgetId, VxRect)>,
+		)
+	{
 		if children.is_empty() {
-			return results;
+			return;
 		}
 
-		let spacing = stats.spacing();
-		let padding = stats.padding();
-		let main_align = stats.main_alignment();
-		let cross_align = stats.cross_alignment();
+		let spacing = ctx.spacing();
+		let padding = ctx.padding();
+		let main_align = ctx.main_alignment();
+		let cross_align = ctx.cross_alignment();
 
-		let inner_x = container_rect.x() + padding;
-		let inner_y = container_rect.y() + padding;
-		let inner_w = (container_rect.width() - padding * 2.0).max(0.0);
-		let inner_h = (container_rect.height() - padding * 2.0).max(0.0);
+		let inner_x = padding;
+		let inner_y = padding;
+		let inner_w = (own_rect.width() - padding * 2.0).max(0.0);
+		let inner_h = (own_rect.height() - padding * 2.0).max(0.0);
 
 		let mut child_meta = Vec::with_capacity(children.len());
 		let mut total_child_height = 0.0;
 
 		for &child_id in children {
-			let size_hint = VxSizeHint::resolve_size_hint(child_id, widgets, creator);
+			let size_hint = VxSizeHint::resolve_size_hint(child_id, widgets, bounding_rect_creator);
 			total_child_height += size_hint.height();
 			child_meta.push((child_id, size_hint));
 		}
@@ -118,8 +109,19 @@ impl VxVBoxLayoutWidget {
 			results.push((child_id, VxRect::new(child_x, current_y, child_w, child_h)));
 			current_y += child_h + spacing;
 		}
+	}
+}
 
-		results
+impl VxVBoxLayoutWidget {
+	pub fn new(parent: Option<VxWidgetId>) -> Self {
+		let mut layout_context = VxBoxLayoutContext::new();
+		layout_context.set_orientation(VxOrientation::Vertical);
+		let mut context = VxWidgetContext::new(parent);
+		context.set_z_value(-5);
+		Self {
+			context,
+			layout_context,
+		}
 	}
 }
 
@@ -137,7 +139,7 @@ impl VxWidget for VxHBoxLayoutWidget {
 		VxSizeHint::ChildrenSize { padding: 0.0 }
 	}
 	fn paint(&mut self, painter: &mut VxPainter, palette: &qd_varallax_core::types::style::VxColorPalette) {
-		painter.draw_rect(self.bounding_rect().with_pos(self.pos()), VxColor::from_hex_with_alpha(0xFF000022));
+		let _ = painter;
 		let _ = palette;
 	}
 	fn as_box_layout(&self) -> Option<&dyn VxBoxLayout> {
@@ -153,55 +155,46 @@ impl VxBoxLayout for VxHBoxLayoutWidget {
 			fn(
 				&VxBoxLayoutContext,
 				&mut VxBoundingRectCreator<'_>,
-				VxRect,&[VxWidgetId],
+				VxRect, &[VxWidgetId],
 				&mut VxGenVector<Box<dyn VxWidget>>,
-			) -> Vec<(VxWidgetId, VxRect)>,
+				&mut Vec<(VxWidgetId, VxRect)>,
+			),
 			VxBoxLayoutContext
 		)
 	{
-		(Self::calc_hbox_layout, self.layout_context)
+		(Self::calc_layout, self.layout_context)
 	}
 }
 
-impl VxHBoxLayoutWidget {
-	#[inline]
-	pub fn new(parent: Option<VxWidgetId>) -> Self {
-		let mut layout_context = VxBoxLayoutContext::new();
-		layout_context.set_orientation(VxOrientation::Horizontal);
-		let mut context = VxWidgetContext::new(parent);
-		context.set_z_value(-5);
-		Self {
-			context,
-			layout_context,
-		}
-	}
-	fn calc_hbox_layout(
-		stats: &VxBoxLayoutContext,
-		creator: &mut VxBoundingRectCreator,
-		container_rect: VxRect,
-		children: &[VxWidgetId],
-		widgets: &mut VxGenVector<Box<dyn VxWidget>>,
-	) -> Vec<(VxWidgetId, VxRect)> {
-		let mut results = Vec::with_capacity(children.len());
+impl VxBoxLayoutCalcrator for VxHBoxLayoutWidget {
+	fn calc_layout(
+			ctx: &VxBoxLayoutContext,
+			bounding_rect_creator: &mut VxBoundingRectCreator,
+			own_rect: VxRect,
+			children: &[VxWidgetId],
+			widgets: &mut VxGenVector<Box<dyn VxWidget>>,
+			results: &mut Vec<(VxWidgetId, VxRect)>,
+		)
+	{
 		if children.is_empty() {
-			return results;
+			return;
 		}
 
-		let spacing = stats.spacing();
-		let padding = stats.padding();
-		let main_align = stats.main_alignment();
-		let cross_align = stats.cross_alignment();
+		let spacing = ctx.spacing();
+		let padding = ctx.padding();
+		let main_align = ctx.main_alignment();
+		let cross_align = ctx.cross_alignment();
 
-		let inner_x = container_rect.x() + padding;
-		let inner_y = container_rect.y() + padding;
-		let inner_w = (container_rect.width() - padding * 2.0).max(0.0);
-		let inner_h = (container_rect.height() - padding * 2.0).max(0.0);
+		let inner_x = padding;
+		let inner_y = padding;
+		let inner_w = (own_rect.width() - padding * 2.0).max(0.0);
+		let inner_h = (own_rect.height() - padding * 2.0).max(0.0);
 
 		let mut child_meta = Vec::with_capacity(children.len());
 		let mut total_child_width = 0.0;
 
 		for &child_id in children {
-			let size_hint = VxSizeHint::resolve_size_hint(child_id, widgets, creator);
+			let size_hint = VxSizeHint::resolve_size_hint(child_id, widgets, bounding_rect_creator);
 			total_child_width += size_hint.width();
 			child_meta.push((child_id, size_hint));
 		}
@@ -234,7 +227,19 @@ impl VxHBoxLayoutWidget {
 			results.push((child_id, VxRect::new(current_x, child_y, child_w, child_h)));
 			current_x += child_w + spacing;
 		}
-		
-		results
+	}
+}
+
+impl VxHBoxLayoutWidget {
+	#[inline]
+	pub fn new(parent: Option<VxWidgetId>) -> Self {
+		let mut layout_context = VxBoxLayoutContext::new();
+		layout_context.set_orientation(VxOrientation::Horizontal);
+		let mut context = VxWidgetContext::new(parent);
+		context.set_z_value(-5);
+		Self {
+			context,
+			layout_context,
+		}
 	}
 }

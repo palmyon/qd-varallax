@@ -65,31 +65,31 @@ pub trait VxWidgetTextExtensionExt: VxWidgetTextExtension {
 	#[inline]
 	fn text(&self) -> &str { &self.text_component().text() }
 	#[inline]
-	fn outline_width(&self) -> f32 { self.text_component().outline_width() }
+	fn text_outline_width(&self) -> f32 { self.text_component().outline_width() }
 	#[inline]
-	fn blur_radius(&self) -> f32 { self.text_component().blur_radius() }
+	fn text_blur_radius(&self) -> f32 { self.text_component().blur_radius() }
 	#[inline]
 	fn need_update_text_bounding_rect(&self) -> bool { self.text_component().need_update_bounding_rect() }
 
 	#[inline]
 	fn set_font(&mut self, font: VxFont) {
 		self.text_component_mut().set_font(font);
-		self.set_dirty_flag(VxDirtyFlag::REBUILD_ALL);
+		self.set_dirty(VxDirtyFlag::REBUILD_ALL);
 	}
 	#[inline]
 	fn set_text(&mut self, text: &str) {
 		self.text_component_mut().set_text(text);
-		self.set_dirty_flag(VxDirtyFlag::REBUILD_ALL);
+		self.set_dirty(VxDirtyFlag::REBUILD_ALL);
 	}
 	#[inline]
-	fn set_outline_width(&mut self, outline_width: f32) {
+	fn set_text_outline_width(&mut self, outline_width: f32) {
 		self.text_component_mut().set_outline_width(outline_width);
-		self.set_dirty_flag(VxDirtyFlag::REPAINT);
+		self.set_dirty(VxDirtyFlag::REPAINT);
 	}
 	#[inline]
-	fn set_blur_radius(&mut self, blur_radius: f32) {
+	fn set_text_blur_radius(&mut self, blur_radius: f32) {
 		self.text_component_mut().set_blur_radius(blur_radius);
-		self.set_dirty_flag(VxDirtyFlag::REPAINT);
+		self.set_dirty(VxDirtyFlag::REPAINT);
 	}
 	#[inline]
 	fn updated_text_bounding_rect(&mut self) {

@@ -3,10 +3,12 @@ use derive_more::{Add, AddAssign, Mul, MulAssign, Div, DivAssign, Sub, SubAssign
 use crate::types::transform::VxTransform;
 
 //vector2 -------------------------------------------------------------------------------
+#[repr(C)]
 #[derive(
 	Clone, Copy, PartialEq, PartialOrd, Debug, Default,
 	Add, Sub, Div,
 	AddAssign, SubAssign, DivAssign,
+	bytemuck::Pod, bytemuck::Zeroable
 )]
 pub struct VxVec2 {
 	x: f32,
@@ -175,7 +177,7 @@ impl VxVec2 {
 		Self::new(self.x() / scale_factor, self.y() / scale_factor)
 	}
 	#[inline]
-	pub fn to_local(&self, pos: Self) -> Self {
+	pub fn to_local(self, pos: Self) -> Self {
 		Self::new(self.x() - pos.x(), self.y() - pos.y())
 	}
 
@@ -188,6 +190,131 @@ impl VxVec2 {
 	#[inline]
 	pub fn with_translate(mut self, vector: Self) -> Self {
 		self.translate(vector);
+		self
+	}
+}
+
+#[repr(C)]
+#[derive(
+	Clone, Copy, PartialEq, PartialOrd, Debug, Default,
+	Add, Sub, Mul, Div,
+	AddAssign, SubAssign, MulAssign, DivAssign,
+	bytemuck::Pod, bytemuck::Zeroable,
+)]
+pub struct VxVec3 {
+	x: f32,
+	y: f32,
+	z: f32,
+}
+
+impl From<(f32, f32, f32)> for VxVec3 {
+	#[inline]
+	fn from((x, y, z): (f32, f32, f32)) -> Self {
+		Self::new(x, y, z)
+	}
+}
+impl From<(i32, i32, i32)> for VxVec3 {
+	#[inline]
+	fn from((x, y, z): (i32, i32, i32)) -> Self {
+		Self::from_i32(x, y, z)
+	}
+}
+impl From<(u32, u32, u32)> for VxVec3 {
+	#[inline]
+	fn from((x, y, z): (u32, u32, u32)) -> Self {
+		Self::from_u32(x, y, z)
+	}
+}
+impl From<[f32; 3]> for VxVec3 {
+	#[inline]
+	fn from([x, y, z]: [f32; 3]) -> Self {
+		Self::new(x, y, z)
+	}
+}
+impl From<[i32; 3]> for VxVec3 {
+	#[inline]
+	fn from([x, y, z]: [i32; 3]) -> Self {
+		Self::from_i32(x, y, z)
+	}
+}
+impl From<[u32; 3]> for VxVec3 {
+	#[inline]
+	fn from([x, y, z]: [u32; 3]) -> Self {
+		Self::from_u32(x, y, z)
+	}
+}
+
+
+impl VxVec3 {
+	#[inline]
+	pub const fn new(x: f32, y: f32, z: f32) -> Self {
+		Self { x, y, z }
+	}
+	#[inline]
+	pub const fn from_i32(x: i32, y: i32, z: i32) -> Self {
+		Self { x: x as f32, y: y as f32, z: z as f32 }
+	}
+	#[inline]
+	pub const fn from_u32(x: u32, y: u32, z: u32) -> Self {
+		Self { x: x as f32, y: y as f32, z: z as f32 }
+	}
+}
+
+impl VxVec3 {
+	#[inline]
+	pub const fn x(&self) -> f32 { self.x }
+	#[inline]
+	pub const fn y(&self) -> f32 { self.y }
+	#[inline]
+	pub const fn z(&self) -> f32 { self.z }
+	#[inline]
+	pub const fn x_i32(&self) -> i32 { self.x as i32 }
+	#[inline]
+	pub const fn y_i32(&self) -> i32 { self.y as i32 }
+	#[inline]
+	pub const fn z_i32(&self) -> i32 { self.z as i32 }
+	#[inline]
+	pub const fn x_u32(&self) -> u32 { self.x as u32 }
+	#[inline]
+	pub const fn y_u32(&self) -> u32 { self.y as u32 }
+	#[inline]
+	pub const fn z_u32(&self) -> u32 { self.z as u32 }
+	#[inline]
+	pub const fn as_tuple(&self) -> (f32, f32, f32) { (self.x, self.y, self.z) }
+	#[inline]
+	pub const fn as_tuple_i32(&self) -> (i32, i32, i32) { (self.x_i32(), self.y_i32(), self.z_i32()) }
+	#[inline]
+	pub const fn as_tuple_u32(&self) -> (u32, u32, u32) { (self.x_u32(), self.y_u32(), self.z_u32()) }
+	#[inline]
+	pub const fn as_array(&self) -> [f32; 3] { [self.x, self.y, self.z] }
+	#[inline]
+	pub const fn as_array_i32(&self) -> [i32; 3] { [self.x_i32(), self.y_i32(), self.z_i32()] }
+	#[inline]
+	pub const fn as_array_u32(&self) -> [u32; 3] { [self.x_u32(), self.y_u32(), self.z_u32()] }
+	#[inline]
+	pub const fn as_vec2(&self) -> VxVec2 { VxVec2::new(self.x, self.y) }
+}
+
+impl VxVec3 {
+	#[inline]
+	pub const fn set_x(&mut self, x: f32) { self.x = x; }
+	#[inline]
+	pub const fn set_y(&mut self, y: f32) { self.y = y; }
+	#[inline]
+	pub const fn set_z(&mut self, z: f32) { self.z = z; }
+	#[inline]
+	pub const fn with_x(mut self, x: f32) -> Self {
+		self.x = x;
+		self
+	}
+	#[inline]
+	pub const fn with_y(mut self, y: f32) -> Self {
+		self.y = y;
+		self
+	}
+	#[inline]
+	pub const fn with_z(mut self, z: f32) -> Self {
+		self.z = z;
 		self
 	}
 }

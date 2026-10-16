@@ -1,258 +1,109 @@
-use crate::types::{color::VxColor, geometry::{VxSize, VxVec2}, render_commands::{VxRenderModuleId, VxVertexRenderModuleTarget}};
+use crate::types::{color::{VxColor, VxColorU8}, geometry::{VxSize, VxVec2, VxVec3}, render_commands::VxRenderModuleId};
 
-#[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct VxTextureVertex {
-	position: [f32; 3],
-	color: [u8; 4],
-	tex_coords: [f32; 2],
-	texture_index: i32,
-}
 
-impl VxTextureVertex {
-	pub const ATTRS: [wgpu::VertexAttribute; 4] = wgpu::vertex_attr_array![
-		0 => Float32x3, // pos
-		1 => Unorm8x4, // color
-		2 => Float32x2, // texcoord
-		3 => Sint32, // tex_index
-	];
-	pub const VERTEXBUFFERLAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
-		array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
-		step_mode: wgpu::VertexStepMode::Vertex,
-		attributes: &Self::ATTRS,
-	};
-
-	#[inline]
-	pub fn new(position: [f32; 3], color: VxColor, tex_coords: [f32; 2], tex_index: i32) -> Self {
-		Self {
-			position,
-			color: color.to_array_with_alpha_u8(),
-			tex_coords,
-			texture_index: tex_index,
+pub trait VxAbstractVertex
+where Self:
+	bytemuck::Zeroable + bytemuck::Pod
+	+ Clone + Copy
+{
+	const MODULE_ID: VxRenderModuleId;
+	fn vertex_attributes() -> &'static [wgpu::VertexAttribute];
+	fn vertex_buffer_layout() -> wgpu::VertexBufferLayout<'static> {
+		wgpu::VertexBufferLayout {
+			array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
+			step_mode: wgpu::VertexStepMode::Vertex,
+			attributes: Self::vertex_attributes(),
 		}
 	}
 
-	#[inline]
-	pub fn position(&self) -> [f32; 3] { self.position }
-	#[inline]
-	pub fn x(self) -> f32 { self.position[0] }
-	#[inline]
-	pub fn y(self) -> f32 { self.position[1] }
-	#[inline]
-	pub fn z(self) -> f32 { self.position[2] }
+	fn pos(&self) -> VxVec3;
+	fn set_pos(&mut self, pos: VxVec3);
 
 	#[inline]
-	pub fn to_vec2(&self) -> VxVec2 {
-		VxVec2::new(self.x(), self.y())
-	}
-
+	fn x(&self) -> f32 { self.pos().x() }
 	#[inline]
-	pub fn set_x(&mut self, x: f32) {
-		self.position[0] = x;
-	}
+	fn y(&self) -> f32 { self.pos().y() }
 	#[inline]
-	pub fn set_y(&mut self, y: f32) {
-		self.position[1] = y;
-	}
+	fn z(&self) -> f32 { self.pos().z() }
 	#[inline]
-	pub fn set_z(&mut self, z: f32) {
-		self.position[2] = z;
-	}
+	fn to_vec2(&self) -> VxVec2 { self.pos().as_vec2() }
 	#[inline]
-	pub fn set_position(&mut self, position: [f32; 3]) {
-		self.position = position;
-	}
+	fn set_x(&mut self, x: f32) { self.pos().set_x(x); }
 	#[inline]
-	pub fn set_position_vec2(&mut self, new_pos: VxVec2) {
-		self.set_x(new_pos.x());
-		self.set_y(new_pos.y());
-	}
+	fn set_y(&mut self, y: f32) { self.pos().set_y(y); }
 	#[inline]
-	pub fn set_tex_coord(&mut self, u: f32, v: f32) {
-		self.tex_coords[0] = u;
-		self.tex_coords[1] = v;
-	}
+	fn set_z(&mut self, z: f32) { self.pos().set_z(z); }
 	#[inline]
-	pub fn set_texture_index(&mut self, id: i32) {
-		self.texture_index = id;
-	}
-}
-
-#[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct VxTextVertex {
-	position: [f32; 3],
-	color: [u8; 4],
-	tex_coords: [f32; 2],
-	texture_index: i32,
-	outline_color: [u8; 4],
-	outline_width: f32,
-	blur_radius: f32,
-}
-
-impl VxTextVertex {
-	pub const ATTRS: [wgpu::VertexAttribute; 7] = wgpu::vertex_attr_array![
-		0 => Float32x3, // pos
-		1 => Unorm8x4, // color
-		2 => Float32x2, // texcoord
-		3 => Sint32, // tex_index
-		4 => Unorm8x4, // outline_color
-		5 => Float32, // outline_width
-		6 => Float32, // blur_radius
-	];
-	pub const VERTEXBUFFERLAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
-		array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
-		step_mode: wgpu::VertexStepMode::Vertex,
-		attributes: &Self::ATTRS,
-	};
-
-	#[inline]
-	pub fn new(
-		position: [f32; 3],
-		color: VxColor,
-		tex_coords: [f32; 2],
-		tex_index: i32,
-		outline_color: VxColor,
-		outline_width: f32,
-		blur_radius: f32,
-	) -> Self {
-		Self {
-			position,
-			color: color.to_array_with_alpha_u8(),
-			tex_coords,
-			texture_index: tex_index,
-			outline_color: outline_color.to_array_with_alpha_u8(),
-			outline_width,
-			blur_radius,
-		}
-	}
-
-	#[inline]
-	pub fn position(&self) -> [f32; 3] { self.position }
-	#[inline]
-	pub fn x(self) -> f32 { self.position[0] }
-	#[inline]
-	pub fn y(self) -> f32 { self.position[1] }
-	#[inline]
-	pub fn z(self) -> f32 { self.position[2] }
-
-	#[inline]
-	pub fn to_vec2(&self) -> VxVec2 {
-		VxVec2::new(self.x(), self.y())
-	}
-
-	#[inline]
-	pub fn set_x(&mut self, x: f32) {
-		self.position[0] = x;
-	}
-	#[inline]
-	pub fn set_y(&mut self, y: f32) {
-		self.position[1] = y;
-	}
-	#[inline]
-	pub fn set_z(&mut self, z: f32) {
-		self.position[2] = z;
-	}
-	#[inline]
-	pub fn set_position(&mut self, position: [f32; 3]) {
-		self.position = position;
-	}
-	#[inline]
-	pub fn set_position_vec2(&mut self, new_pos: VxVec2) {
-		self.set_x(new_pos.x());
-		self.set_y(new_pos.y());
-	}
-	#[inline]
-	pub fn set_tex_coord(&mut self, u: f32, v: f32) {
-		self.tex_coords[0] = u;
-		self.tex_coords[1] = v;
-	}
-	#[inline]
-	pub fn set_texture_index(&mut self, id: i32) {
-		self.texture_index = id;
+	fn set_pos_vec2(&mut self, pos: VxVec2) {
+		let pos_v2 = self.pos().with_x(pos.x()).with_y(pos.y());
+		self.set_pos(VxVec3::new(pos_v2.x(), pos_v2.y(), self.pos().z()));
 	}
 }
 
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, PartialEq, Debug, bytemuck::Zeroable, bytemuck::Pod)]
 pub struct VxVertex {
-	position: [f32; 3],
-	color: [u8; 4],
+	pos: VxVec3,
+	color: VxColorU8,
+}
+
+impl VxAbstractVertex for VxVertex {
+	const MODULE_ID: VxRenderModuleId = VxRenderModuleId::VERTEX;
+	fn vertex_attributes() -> &'static [wgpu::VertexAttribute] {
+		&Self::VERTEX_ATTRIBUTES
+	}
+	#[inline]
+	fn pos(&self) -> VxVec3 {
+		self.pos
+	}
+	#[inline]
+	fn set_pos(&mut self, pos: VxVec3) {
+		self.pos = pos;
+	}
 }
 
 impl VxVertex {
-	pub const ATTRS: [wgpu::VertexAttribute; 2] = wgpu::vertex_attr_array![
-		0 => Float32x3, // pos
-		1 => Unorm8x4, // color
+	pub const VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 2] = wgpu::vertex_attr_array![
+		0 => Float32x3,
+		1 => Unorm8x4,
 	];
-	pub const VERTEXBUFFERLAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
-		array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
-		step_mode: wgpu::VertexStepMode::Vertex,
-		attributes: &Self::ATTRS,
-	};
-
 	#[inline]
-	pub fn new(position: [f32; 3], color: VxColor) -> Self {
-		Self {
-			position,
-			color: color.to_array_with_alpha_u8(),
-		}
-	}
-
-	#[inline]
-	pub fn position(&self) -> [f32; 3] { self.position }
-	#[inline]
-	pub fn x(self) -> f32 { self.position[0] }
-	#[inline]
-	pub fn y(self) -> f32 { self.position[1] }
-	#[inline]
-	pub fn z(self) -> f32 { self.position[2] }
-
-	#[inline]
-	pub fn to_vec2(&self) -> VxVec2 {
-		VxVec2::new(self.x(), self.y())
-	}
-
-	#[inline]
-	pub fn set_x(&mut self, x: f32) {
-		self.position[0] = x;
-	}
-	#[inline]
-	pub fn set_y(&mut self, y: f32) {
-		self.position[1] = y;
-	}
-	#[inline]
-	pub fn set_z(&mut self, z: f32) {
-		self.position[2] = z;
-	}
-	#[inline]
-	pub fn set_position(&mut self, position: [f32; 3]) {
-		self.position = position;
-	}
-	#[inline]
-	pub fn set_position_vec2(&mut self, new_pos: VxVec2) {
-		self.set_x(new_pos.x());
-		self.set_y(new_pos.y());
+	pub const fn new(pos: VxVec3, color: VxColor) -> Self {
+		Self { pos, color: color.to_vxcoloru8() }
 	}
 }
 
-
 #[repr(C)]
-#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, PartialEq, Debug, bytemuck::Zeroable, bytemuck::Pod)]
 pub struct VxSdfVertex {
-	position: [f32; 3],
-	color: [u8; 4],
+	pos: VxVec3,
+	color: VxColorU8,
 	radius: f32,
-	uv: [f32; 2],
-	size: [f32 ; 2],
-	outline_color: [u8; 4],
+	uv: VxVec2,
+	size: VxSize,
+	outline_color: VxColorU8,
 	outline_width: f32,
 	blur_radius: f32,
 }
 
+impl VxAbstractVertex for VxSdfVertex {
+	const MODULE_ID: VxRenderModuleId = VxRenderModuleId::SDF;
+	fn vertex_attributes() -> &'static [wgpu::VertexAttribute] {
+		&Self::VERTEX_ATTRIBUTES
+	}
+	#[inline]
+	fn pos(&self) -> VxVec3 {
+		self.pos
+	}
+	#[inline]
+	fn set_pos(&mut self, pos: VxVec3) {
+		self.pos = pos;
+	}
+}
+
 impl VxSdfVertex {
-	pub const ATTRS: [wgpu::VertexAttribute; 8] = wgpu::vertex_attr_array![
+	pub const VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 8] = wgpu::vertex_attr_array![
 		0 => Float32x3,
 		1 => Unorm8x4,
 		2 => Float32,
@@ -262,94 +113,116 @@ impl VxSdfVertex {
 		6 => Float32,
 		7 => Float32,
 	];
-	pub const VERTEXBUFFERLAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
-		array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
-		step_mode: wgpu::VertexStepMode::Vertex,
-		attributes: &Self::ATTRS,
-	};
-
 	#[inline]
 	pub fn new(
-		position: [f32; 3],
+		pos: VxVec3,
 		color: VxColor,
 		radius: f32,
-		uv: [f32; 2],
-		rect_pix_size: VxSize,
+		uv: VxVec2,
+		size: VxSize,
 		outline_color: VxColor,
 		outline_width: f32,
 		blur_radius: f32,
 	) -> Self {
 		Self {
-			position,
-			color: color.to_array_with_alpha_u8(),
-			radius,
-			uv	,
-			size: rect_pix_size.to_array(),
-			outline_color: outline_color.to_array_with_alpha_u8(),
-			outline_width,
-			blur_radius,
+			pos,
+			color: color.to_vxcoloru8(),
+			radius, uv,size,
+			outline_color: outline_color.to_vxcoloru8(),
+			outline_width, blur_radius
 		}
 	}
-
-	#[inline]
-	pub fn position(&self) -> [f32; 3] { self.position }
-	#[inline]
-	pub fn x(self) -> f32 { self.position[0] }
-	#[inline]
-	pub fn y(self) -> f32 { self.position[1] }
-	#[inline]
-	pub fn z(self) -> f32 { self.position[2] }
-
-	#[inline]
-	pub fn to_vec2(&self) -> VxVec2 {
-		VxVec2::new(self.x(), self.y())
-	}
-
-	#[inline]
-	pub fn set_x(&mut self, x: f32) {
-		self.position[0] = x;
-	}
-	#[inline]
-	pub fn set_y(&mut self, y: f32) {
-		self.position[1] = y;
-	}
-	#[inline]
-	pub fn set_z(&mut self, z: f32) {
-		self.position[2] = z;
-	}
-	#[inline]
-	pub fn set_position(&mut self, position: [f32; 3]) {
-		self.position = position;
-	}
-	#[inline]
-	pub fn set_position_vec2(&mut self, new_pos: VxVec2) {
-		self.set_x(new_pos.x());
-		self.set_y(new_pos.y());
-	}
-	#[inline]
-	pub fn set_uv(&mut self, u: f32, v: f32) {
-		self.uv[0] = u;
-		self.uv[1] = v;
-	}
-	#[inline]
-	pub fn set_size(&mut self, size: VxSize) {
-		self.size = size.to_array();
-	}
-	#[inline]
-	pub fn set_radius(&mut self, radius: f32) {
-		self.radius = radius;
-	}
 }
 
-impl VxVertexRenderModuleTarget for VxVertex {
-	const MODULE_ID: VxRenderModuleId = VxRenderModuleId::VERTEX;
+#[repr(C)]
+#[derive(Clone, Copy, PartialEq, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct VxTextureVertex {
+	pos: VxVec3,
+	color: VxColorU8,
+	texture_coordinate: VxVec2,
+	texture_index: i32,
 }
-impl VxVertexRenderModuleTarget for VxSdfVertex {
-	const MODULE_ID: VxRenderModuleId = VxRenderModuleId::SDF;
-}
-impl VxVertexRenderModuleTarget for VxTextureVertex {
+
+impl VxAbstractVertex for VxTextureVertex {
 	const MODULE_ID: VxRenderModuleId = VxRenderModuleId::TEXTURE;
+	fn vertex_attributes() -> &'static [wgpu::VertexAttribute] {
+		&Self::VERTEX_ATTRIBUTES
+	}
+	#[inline]
+	fn pos(&self) -> VxVec3 {
+		self.pos
+	}
+	#[inline]
+	fn set_pos(&mut self, pos: VxVec3) {
+		self.pos = pos;
+	}
 }
-impl VxVertexRenderModuleTarget for VxTextVertex {
-	const MODULE_ID: VxRenderModuleId = VxRenderModuleId::TEXT;
+
+impl VxTextureVertex {
+	pub const VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 4] = wgpu::vertex_attr_array![
+		0 => Float32x3,
+		1 => Unorm8x4,
+		2 => Float32x2,
+		3 => Sint32,
+	];
+	#[inline]
+	pub fn new(pos: VxVec3, color: VxColor, texture_coordinate: VxVec2, texture_index: i32) -> Self {
+		Self {
+			pos, color: color.to_vxcoloru8(), texture_coordinate, texture_index
+		}
+	}
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, PartialEq, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct VxGlyphVertex {
+	pos: VxVec3,
+	color: VxColorU8,
+	texture_coordinate: VxVec2,
+	texture_index: i32,
+	outline_color: VxColorU8,
+	outline_width: f32,
+	blur_radius: f32,
+}
+
+impl VxAbstractVertex for VxGlyphVertex {
+	const MODULE_ID: VxRenderModuleId = VxRenderModuleId::GLYPH;
+	fn vertex_attributes() -> &'static [wgpu::VertexAttribute] {
+		&Self::VERTEX_ATTRIBUTES
+	}
+	#[inline]
+	fn pos(&self) -> VxVec3 {
+		self.pos
+	}
+	#[inline]
+	fn set_pos(&mut self, pos: VxVec3) {
+		self.pos = pos;
+	}
+}
+
+impl VxGlyphVertex {
+	pub const VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 7] = wgpu::vertex_attr_array![
+		0 => Float32x3,
+		1 => Unorm8x4,
+		2 => Float32x2,
+		3 => Sint32,
+		4 => Unorm8x4,
+		5 => Float32,
+		6 => Float32,
+	];
+	#[inline]
+	pub fn new(
+		pos: VxVec3,
+		color: VxColor,
+		texture_coordinate: VxVec2,
+		texture_index: i32,
+		outline_color: VxColor,
+		outline_width: f32,
+		blur_radius: f32
+	) -> Self {
+		Self {
+			pos, color: color.to_vxcoloru8(), texture_coordinate, texture_index,
+			outline_color: outline_color.to_vxcoloru8(), outline_width, blur_radius
+		}
+	}
 }

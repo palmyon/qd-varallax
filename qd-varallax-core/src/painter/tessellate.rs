@@ -1,15 +1,8 @@
 use crate::types::{
-	color::VxColor,
-	geometry::{
-		VxRect,
-		VxSize
-	},
-	style::VxSdfStyle,
-	vertex::{
-		VxSdfVertex,
-		VxTextureVertex,
-		VxTextVertex,
-		VxVertex
+	color::VxColor, geometry::{
+		VxRect, VxSize, VxVec2, VxVec3
+	}, style::VxSdfStyle, vertex::{
+		VxSdfVertex, VxGlyphVertex, VxTextureVertex, VxVertex
 	}
 };
 
@@ -24,11 +17,11 @@ impl VxTessellator {
 	
 		(
 			[
-				VxTextureVertex::new([x, y, 0.0], color, uv.left_top().to_array(), tex_index),
-				VxTextureVertex::new([x + w, y, 0.0], color, uv.right_top().to_array(), tex_index),
+				VxTextureVertex::new(VxVec3::new(x, y, 0.0), color, uv.left_top(), tex_index),
+				VxTextureVertex::new(VxVec3::new(x + w, y, 0.0), color, uv.right_top(), tex_index),
 				
-				VxTextureVertex::new([x + w, y + h, 0.0], color, uv.right_bottom().to_array(), tex_index),
-				VxTextureVertex::new([x, y + h, 0.0], color, uv.left_bottom().to_array(), tex_index),
+				VxTextureVertex::new(VxVec3::new(x + w, y + h, 0.0), color, uv.right_bottom(), tex_index),
+				VxTextureVertex::new(VxVec3::new(x, y + h, 0.0), color, uv.left_bottom(), tex_index),
 			],
 			[0, 1, 2, 2, 3, 0]
 		)
@@ -42,11 +35,11 @@ impl VxTessellator {
 	
 		(
 			[
-				VxVertex::new([x, y, 0.0], color),
-				VxVertex::new([x + w, y, 0.0], color),
+				VxVertex::new(VxVec3::new(x, y, 0.0), color),
+				VxVertex::new(VxVec3::new(x + w, y, 0.0), color),
 				
-				VxVertex::new([x + w, y + h, 0.0], color),
-				VxVertex::new([x, y + h, 0.0], color),
+				VxVertex::new(VxVec3::new(x + w, y + h, 0.0), color),
+				VxVertex::new(VxVec3::new(x, y + h, 0.0), color),
 			],
 			[0, 1, 2, 2, 3, 0]
 		)
@@ -72,25 +65,25 @@ impl VxTessellator {
 		(
 			[
 				VxSdfVertex::new(
-					[x, y, 0.0], color, radius,
-					[0.0, 0.0], size,
+					VxVec3::new(x, y, 0.0), color, radius,
+					VxVec2::new(0.0, 0.0), size,
 					outline_color, outline_width, blur_radius,
 	
 				),
 				VxSdfVertex::new(
-					[x + w, y, 0.0], color, radius,
-					[1.0, 0.0], size,
+					VxVec3::new(x + w, y, 0.0), color, radius,
+					VxVec2::new(1.0, 0.0), size,
 					outline_color, outline_width, blur_radius,
 				),
 				
 				VxSdfVertex::new(
-					[x + w, y + h, 0.0], color, radius,
-					[1.0, 1.0], size,
+					VxVec3::new(x + w, y + h, 0.0), color, radius,
+					VxVec2::new(1.0, 1.0), size,
 					outline_color, outline_width, blur_radius,
 				),
 				VxSdfVertex::new(
-					[x, y + h, 0.0], color, radius,
-					[0.0, 1.0], size,
+					VxVec3::new(x, y + h, 0.0), color, radius,
+					VxVec2::new(0.0, 1.0), size,
 					outline_color, outline_width, blur_radius,
 				),
 			],
@@ -106,7 +99,7 @@ impl VxTessellator {
 		mut outline_color: VxColor,
 		outline_width: f32,
 		blur_radius: f32,
-	) -> ([VxTextVertex; 4], [u32; 6]) {
+	) -> ([VxGlyphVertex; 4], [u32; 6]) {
 		let x = rect.x();
 		let y = rect.y();
 		let w = rect.width();
@@ -119,24 +112,24 @@ impl VxTessellator {
 	
 		(
 			[
-				VxTextVertex::new(
-					[x, y, 0.0], color, uv.left_top().to_array(),
+				VxGlyphVertex::new(
+					VxVec3::new(x, y, 0.0), color, uv.left_top(),
 					tex_index, outline_color, outline_width,
 					blur_radius,
 				),
-				VxTextVertex::new(
-					[x + w, y, 0.0], color, uv.right_top().to_array(),
+				VxGlyphVertex::new(
+					VxVec3::new(x + w, y, 0.0), color, uv.right_top(),
 					tex_index, outline_color, outline_width,
 					blur_radius,
 				),
 				
-				VxTextVertex::new(
-					[x + w, y + h, 0.0], color, uv.right_bottom().to_array(),
+				VxGlyphVertex::new(
+					VxVec3::new(x + w, y + h, 0.0), color, uv.right_bottom(),
 					tex_index, outline_color, outline_width,
 					blur_radius,
 				),
-				VxTextVertex::new(
-					[x, y + h, 0.0], color, uv.left_bottom().to_array(),
+				VxGlyphVertex::new(
+					VxVec3::new(x, y + h, 0.0), color, uv.left_bottom(),
 					tex_index, outline_color, outline_width,
 					blur_radius,
 				),

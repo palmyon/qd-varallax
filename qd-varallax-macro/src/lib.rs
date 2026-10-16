@@ -27,3 +27,8 @@ pub fn vx_widget_text_impl(input: TokenStream) -> TokenStream {
 pub fn vx_widget_button_impl(input: TokenStream) -> TokenStream {
 	widget_macro::vx_widget_button_impl(input)
 }
+
+#[proc_macro_derive(VxWidgetValueImpl, attributes(attr_value))]
+pub fn vx_widget_value_impl(input: TokenStream) -> TokenStream {
+	widget_macro::vx_widget_value_impl(input)
+}

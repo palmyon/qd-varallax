@@ -7,12 +7,9 @@ use crate::{
 		resource::VxAppResource
 	}, types::{
 		render_commands::{
-			VxDrawLine, VxDrawLineContainer, VxRenderMode, VxRenderModuleId, VxVertexContainer, VxVertexRenderModuleTarget
+			VxDrawLine, VxDrawLineContainer, VxRenderMode, VxRenderModuleId, VxVertexContainer
 		}, transform::VxMatrix4x4, vertex::{
-			VxSdfVertex,
-			VxTextVertex,
-			VxTextureVertex,
-			VxVertex
+			VxAbstractVertex, VxSdfVertex, VxGlyphVertex, VxTextureVertex, VxVertex
 		}
 	}
 };
@@ -266,7 +263,7 @@ impl VxRenderer {
 			VxRenderModuleId::VERTEX,
 			include_str!("shader/vertex_shader.wgsl"),
 			&[],
-			&[VxVertex::VERTEXBUFFERLAYOUT],
+			&[VxVertex::vertex_buffer_layout()],
 			(std::mem::size_of::<VxVertex>() * 100) as u64
 		);
 
@@ -276,7 +273,7 @@ impl VxRenderer {
 			VxRenderModuleId::SDF,
 			include_str!("shader/sdf_shader.wgsl"),
 			&[],
-			&[VxSdfVertex::VERTEXBUFFERLAYOUT],
+			&[VxSdfVertex::vertex_buffer_layout()],
 			(std::mem::size_of::<VxSdfVertex>() * 100) as u64,
 		);
 
@@ -286,25 +283,25 @@ impl VxRenderer {
 			VxRenderModuleId::TEXTURE,
 			include_str!("shader/texture_shader.wgsl"),
 			&[&gpu.bind_group_layout],
-			&[VxTextureVertex::VERTEXBUFFERLAYOUT],
+			&[VxTextureVertex::vertex_buffer_layout()],
 			(std::mem::size_of::<VxTextureVertex>() * 100) as u64
 		);
 
 		let text_module = VxRenderModule::new(
 			&gpu,
 			&surface_config,
-			VxRenderModuleId::TEXT,
+			VxRenderModuleId::GLYPH,
 			include_str!("shader/text_shader.wgsl"),
 			&[&gpu.bind_group_layout],
-		&[VxTextVertex::VERTEXBUFFERLAYOUT],
-		(std::mem::size_of::<VxTextVertex>() * 100) as u64
+		&[VxGlyphVertex::vertex_buffer_layout()],
+		(std::mem::size_of::<VxGlyphVertex>() * 100) as u64
 		);
 
 		let mut modules = AHashMap::new();
 		modules.insert(VxRenderModuleId::VERTEX, vertex_module);
 		modules.insert(VxRenderModuleId::SDF, sdf_module);
 		modules.insert(VxRenderModuleId::TEXTURE, texture_module);
-		modules.insert(VxRenderModuleId::TEXT, text_module);
+		modules.insert(VxRenderModuleId::GLYPH, text_module);
 
 		Self {
 			modules,
@@ -401,7 +398,7 @@ impl VxRenderer {
 			VxRenderModuleId::TEXTURE => {
 				render_pass.set_bind_group(1, &res.textures.module.bind_group, &[]);
 			}
-			VxRenderModuleId::TEXT => {
+			VxRenderModuleId::GLYPH => {
 				render_pass.set_bind_group(1, &res.fonts.module.bind_group, &[]);
 			}
 			_ => {}
@@ -424,14 +421,12 @@ impl VxRenderer {
 		}
 	}
 
-	pub fn set_vertices<T>(
+	pub fn set_vertices<T: VxAbstractVertex>(
 		&mut self,
 		gpu: &VxGpuResource,
 		render_mode: VxRenderMode,
 		vertices_container: Vec<VxVertexContainer<T>>,
-	) where
-		T: VxVertexRenderModuleTarget,
-	{
+	) {
 		let lines = match render_mode {
 			VxRenderMode::Retained => &mut self.retained_draw_lines,
 			VxRenderMode::Immediate => &mut self.immediate_draw_lines,
@@ -446,7 +441,7 @@ impl VxRenderer {
 		);
 	}
 
-	fn write_data_to_buffer<T: VxVertexRenderModuleTarget>(
+	fn write_data_to_buffer<T: VxAbstractVertex>(
 		gpu: &VxGpuResource,
 		module: &mut VxRenderModule,
 		render_mode: VxRenderMode,

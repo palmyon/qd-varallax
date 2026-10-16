@@ -115,8 +115,8 @@ impl VxWidget for VxButtonWidget {
 			self.font(),
 			text_color,
 			outline_color,
-			self.outline_width(),
-			self.blur_radius()
+			self.text_outline_width(),
+			self.text_blur_radius()
 		);
 		painter.pop_transform();
 	}
@@ -124,7 +124,7 @@ impl VxWidget for VxButtonWidget {
 	fn mouse_enter_event(&mut self, event: &VxMouseEvent) -> VxEventResult {
 		if !self.is_enabled() { return VxEventResult::Ignore }
 		self.set_hovered(true);
-		self.set_dirty_flag(VxDirtyFlag::REPAINT);
+		self.set_dirty(VxDirtyFlag::REPAINT);
 		if !self.is_block_signal() {
 			self.signals.hovered.clone().emit(self, &event.pos());
 		}
@@ -134,7 +134,7 @@ impl VxWidget for VxButtonWidget {
 		if !self.is_enabled() { return VxEventResult::Ignore }
 		self.set_hovered(false);
 		self.set_pressed(false);
-		self.set_dirty_flag(VxDirtyFlag::REPAINT);
+		self.set_dirty(VxDirtyFlag::REPAINT);
 		if !self.is_block_signal() {
 			self.signals.leaved.clone().emit(self, &event.pos());
 		}
@@ -149,7 +149,7 @@ impl VxWidget for VxButtonWidget {
 		if !self.is_block_signal() {
 			self.signals.pressed.clone().emit(self, &event.pos());
 		}
-		self.set_dirty_flag(VxDirtyFlag::REPAINT);
+		self.set_dirty(VxDirtyFlag::REPAINT);
 		VxEventResult::Accept
 	}
 	fn mouse_release_event(&mut self, event: &VxMouseEvent) -> VxEventResult {
@@ -160,7 +160,7 @@ impl VxWidget for VxButtonWidget {
 		if !self.is_block_signal() {
 			self.signals.released.clone().emit(self, &event.pos());
 		}
-		self.set_dirty_flag(VxDirtyFlag::REPAINT);
+		self.set_dirty(VxDirtyFlag::REPAINT);
 		if self.is_hovered() && self.is_pressed() {
 			self.set_pressed(false);
 			if !self.is_block_signal() && self.is_clickable() {
